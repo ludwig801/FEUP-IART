@@ -11,11 +11,15 @@ public class GamePawn {
 		this.positionTile.setPawn(this);
 	}
 	
-	public void SetPositionTile(GameTile mTile) {
+	public void setPositionTile(GameTile mTile) {
 		this.positionTile = mTile;
 	}
 	
-	public GamePlayer GetOwningPlayer() {
+	public GameTile getPositionTile() {
+		return this.positionTile;
+	}
+	
+	public GamePlayer getOwningPlayer() {
 		return this.owningPlayer;
 	}
 	

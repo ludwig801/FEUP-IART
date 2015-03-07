@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import quoridor.logic.GameBoard;
+import quoridor.logic.GameLogic;
 
 public class GameTests {
 
@@ -42,6 +43,38 @@ public class GameTests {
 				assertEquals(board.getTile(i, j).getNeighbors().size(), 4);
 			}
 		}
+	}
+	
+	@Test
+	public void testNextTurn() {
+		GameLogic logic = new GameLogic();
+		
+		logic.nextTurn();
+		
+		assertEquals(logic.getCurrentPlayerIndex(), 1);
+	}
+	
+	@Test
+	public void testMovePawn() {
+		GameLogic logic = new GameLogic();
+		GameBoard board = logic.getGameBoard();
+		
+		logic.movePawnTo(1, 4);
+		
+		assertFalse(board.getTile(0, 4).isOccupied());
+		assertTrue(board.getTile(1, 4).isOccupied());
+		
+		assertEquals(board.getTile(1,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
+		
+		logic.nextTurn();
+		logic.movePawnTo(7, 4);
+
+		assertFalse(board.getTile(8, 4).isOccupied());
+		assertTrue(board.getTile(7, 4).isOccupied());
+		
+		assertEquals(board.getTile(7,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
+		
+		logic.printGameState();
 	}
 
 }

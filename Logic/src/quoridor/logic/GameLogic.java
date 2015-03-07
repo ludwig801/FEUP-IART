@@ -3,6 +3,9 @@ package quoridor.logic;
 import java.util.ArrayList;
 
 public class GameLogic {
+	
+	protected static final int numPlayers = 2;
+	protected static final int maxMoveDist = 1;
 
 	protected GameBoard board;
 	protected ArrayList<GamePlayer> players;
@@ -29,13 +32,57 @@ public class GameLogic {
 	}
 	
 	public void playGame() {
-		printGameState();
+		// TODO : game logic
 	}
 	
-	private void printGameState() {
-		System.out.println("===========================");
-		System.out.println("   Turn: " + players.get(currentPlayerIndex).getName());
-		System.out.println("===========================");
+	public void movePawnTo(int mRow, int mCol) {
+		movePawnTo(board.getTile(mRow, mCol));
+	}
+	
+	protected void movePawnTo(GameTile mTile) {
+		GamePawn pawn = pawns.get(currentPlayerIndex);
+		GameTile pawnTile = pawn.getPositionTile();
+		
+		if(checkMoveDistance(pawnTile, mTile)) {
+			pawnTile.removePawn();
+			pawn.setPositionTile(mTile);
+			mTile.setPawn(pawn);
+		}
+	}
+
+	public boolean checkMoveDistance(GameTile tileFrom, GameTile tileTo) {
+		if(Math.abs(tileTo.getRow() - tileFrom.getRow()) > maxMoveDist) {
+			return false;
+		}
+		
+		if(Math.abs(tileTo.getCol() - tileFrom.getCol()) > maxMoveDist) {
+			return false;
+		}
+		
+		return true;	
+	}
+
+	public void nextTurn() {
+		currentPlayerIndex++;
+		currentPlayerIndex %= numPlayers;
+	}
+	
+	public int getCurrentPlayerIndex() {	
+		return this.currentPlayerIndex;
+	}
+	
+	public GameBoard getGameBoard() {
+		return this.board;
+	}
+	
+	public ArrayList<GamePawn> getPawns() {
+		return this.pawns;
+	}
+	
+	public void printGameState() {
+		System.out.println("===================================");
+		System.out.println("          Turn: " + players.get(currentPlayerIndex).getName());
+		System.out.println("===================================");
 		System.out.println();
 		
 		for(ArrayList<GameTile> line : board.getTiles()) {
