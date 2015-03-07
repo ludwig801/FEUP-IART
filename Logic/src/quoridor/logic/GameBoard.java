@@ -9,9 +9,14 @@ public class GameBoard {
 	public GameBoard(int mSize) {
 		int localSize = mSize;
 		
+		/* [!]
+		 * 
+		 * If mSize is an even number, then boardSize auto-adjusts to mSize + 1.
+		 * 
+		 */
 		if(mSize % 2 == 0) {
 			localSize++;
-			System.out.println("GameBoard() --> mSize(" + mSize + ") is even. (" + localSize + ") will be used.");
+			//System.out.println("GameBoard() --> mSize(" + mSize + ") is even. (" + localSize + ") will be used.");
 		}
 		
 		// Initialize the multidimensional array that shall contain the game tiles.

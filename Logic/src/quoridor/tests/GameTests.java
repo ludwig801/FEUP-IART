@@ -76,5 +76,28 @@ public class GameTests {
 		
 		logic.printGameState();
 	}
+	
+	@Test
+	public void testMovePawnToNonLegalPosition() {
+		GameLogic logic = new GameLogic();
+		GameBoard board = logic.getGameBoard();
+		
+		logic.movePawnTo(2, 4);
+		
+		assertFalse(board.getTile(2, 4).isOccupied());
+		assertTrue(board.getTile(0, 4).isOccupied());
+		
+		assertEquals(board.getTile(0,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
+		
+		logic.nextTurn();
+		logic.movePawnTo(4, 3);
+
+		assertFalse(board.getTile(4, 3).isOccupied());
+		assertTrue(board.getTile(8, 4).isOccupied());
+		
+		assertEquals(board.getTile(8,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
+		
+		logic.printGameState();
+	}
 
 }
