@@ -30,20 +30,26 @@ public class GameTile {
 	
 	protected int row, col;
 	protected ArrayList<GameTile> neighbors;
-	protected boolean occupied;
 	protected GamePawn pawn;
-	protected boolean walled;
 	protected GameWall wall;
 	
+	// Shortest path to victory
+	// One array position for each player
+	public boolean visited;
+	public int[] value = new int[2];
+	public GameTile[] shortestPathParent = new GameTile[2];
+	public GameTile[] shortestPathChild = new GameTile[2];
 	
 	public GameTile(int mRow, int mCol) {
-		
 		this.row = mRow;
 		this.col = mCol;
 		
-		this.occupied = false;
+		this.neighbors = new ArrayList<GameTile>();
 		
-		this.neighbors = new ArrayList<GameTile>(4);
+		this.visited = false;
+		
+		this.value[0] = -1;
+		this.value[1] = -1;
 	}
 	
 	public int getRow() {
@@ -55,12 +61,11 @@ public class GameTile {
 	}
 
 	public boolean isOccupied() {
-		return this.occupied;
+		return this.pawn != null;
 	}
 	
 	public void setPawn(GamePawn mPawn) {
 		this.pawn = mPawn;
-		this.occupied = true;
 	}
 	
 	public GamePawn getPawn() {
@@ -69,16 +74,14 @@ public class GameTile {
 	
 	public void removePawn() {
 		this.pawn = null;
-		this.occupied = false;
 	}
 	
 	public boolean isWalled() {
-		return this.walled;
+		return this.wall != null;
 	}
 	
 	public void setWall(GameWall mWall) {
 		this.wall = mWall;
-		this.walled = true;
 	}
 	
 	public GameWall getWall() {
@@ -87,10 +90,9 @@ public class GameTile {
 	
 	public void removeWall() {
 		this.wall = null;
-		this.walled = false;
 	}
 	
-	public void SetNeighbor(GameTile mTile) {
+	public void addNeighbor(GameTile mTile) {
 		this.neighbors.add(mTile);
 	}
 	
@@ -101,4 +103,5 @@ public class GameTile {
 	public ArrayList<GameTile> getNeighbors() {
 		return this.neighbors;
 	}
+	
 }

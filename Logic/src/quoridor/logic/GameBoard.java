@@ -45,8 +45,8 @@ public class GameBoard {
 	}
 	
 	public void addLink(GameTile tileA, GameTile tileB) {
-		tileA.SetNeighbor(tileB);
-		tileB.SetNeighbor(tileA);
+		tileA.addNeighbor(tileB);
+		tileB.addNeighbor(tileA);
 	}
 	
 	public void removeLink(GameTile tileA, GameTile tileB) {
@@ -64,6 +64,10 @@ public class GameBoard {
 	
 	public int getSize() {
 		return tiles.size();
+	}
+	
+	public int getBorder() {
+		return tiles.size() - 1;
 	}
 
 	public void printLinks() {

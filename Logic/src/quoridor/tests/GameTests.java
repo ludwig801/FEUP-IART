@@ -5,7 +5,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import quoridor.logic.GameBoard;
-import quoridor.logic.GameLogic;
+import quoridor.logic.GameState;
 
 public class GameTests {
 
@@ -47,7 +47,7 @@ public class GameTests {
 	
 	@Test
 	public void testNextTurn() {
-		GameLogic logic = new GameLogic();
+		GameState logic = new GameState();
 		
 		logic.nextTurn();
 		
@@ -56,7 +56,7 @@ public class GameTests {
 	
 	@Test
 	public void testMovePawn() {
-		GameLogic logic = new GameLogic();
+		GameState logic = new GameState();
 		GameBoard board = logic.getGameBoard();
 		
 		logic.movePawnTo(1, 4);
@@ -73,13 +73,11 @@ public class GameTests {
 		assertTrue(board.getTile(7, 4).isOccupied());
 		
 		assertEquals(board.getTile(7,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
-		
-		logic.printGameState();
 	}
 	
 	@Test
 	public void testMovePawnToNonLegalPosition() {
-		GameLogic logic = new GameLogic();
+		GameState logic = new GameState();
 		GameBoard board = logic.getGameBoard();
 		
 		logic.movePawnTo(2, 4);
@@ -96,8 +94,41 @@ public class GameTests {
 		assertTrue(board.getTile(8, 4).isOccupied());
 		
 		assertEquals(board.getTile(8,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
+	}
+	
+	@Test
+	public void testAddingWalls() {
+		GameState logic = new GameState();
+		GameBoard board = logic.getGameBoard();
 		
-		logic.printGameState();
+		logic.addWall(0, 4, true);
+		
+		logic.addWall(7, 4, false);
+		
+		assertTrue(board.getTile(0, 4).isWalled());
+		assertTrue(board.getTile(0, 4).getWall().isHorizontal());
+		
+		assertTrue(board.getTile(7, 4).isWalled());
+		assertTrue(board.getTile(7, 4).getWall().isVertical());
+	}
+	
+	@Test
+	public void testAddingNonLegalWalls() {
+		GameState logic = new GameState();
+		GameBoard board = logic.getGameBoard();
+		
+		logic.addWall(0, 4, true);
+		
+		assertTrue(board.getTile(0, 4).isWalled());
+		assertTrue(board.getTile(0, 4).getWall().isHorizontal());
+		
+		logic.addWall(0, 4, false);
+
+		assertFalse(board.getTile(0, 4).getWall().isVertical());
+		
+		logic.addWall(0, 3, true);
+		
+		assertFalse(board.getTile(0, 3).isWalled());
 	}
 
 }

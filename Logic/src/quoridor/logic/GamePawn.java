@@ -3,9 +3,9 @@ package quoridor.logic;
 public class GamePawn {
 
 	protected GameTile positionTile;
-	protected GamePlayer owningPlayer;
+	protected int owningPlayer;
 	
-	public GamePawn(GamePlayer mOwningPlayer, GameTile mPositionTile) {
+	public GamePawn(int mOwningPlayer, GameTile mPositionTile) {
 		this.owningPlayer = mOwningPlayer;
 		this.positionTile = mPositionTile;
 		this.positionTile.setPawn(this);
@@ -19,11 +19,7 @@ public class GamePawn {
 		return this.positionTile;
 	}
 	
-	public GamePlayer getOwningPlayer() {
+	public int getOwningPlayer() {
 		return this.owningPlayer;
-	}
-	
-	public int getPlayerId() {
-		return owningPlayer.getId();
 	}
 }
