@@ -35,6 +35,7 @@ public class GameAI {
 	public GameAI(GameState mInitialState) {
 		root = new GameStateNode(mInitialState);
 		
+<<<<<<< HEAD
 //		root.state.board.getTile(0, 2).removePawn();
 //		root.state.board.getTile(0, 1).setPawn(root.state.pawns.get(0));
 		
@@ -44,6 +45,15 @@ public class GameAI {
 		root.state.addWall(2, 2, true);
 		root.state.addWall(3, 1, true);
 		root.state.addWall(3, 3, true);
+=======
+//		root.state.addWall(0, 1, false);
+//		root.state.addWall(2, 1, false);
+//		root.state.addWall(3, 2, true);
+//		root.state.addWall(1, 2, true);
+//		root.state.addWall(2, 3, true);
+//		root.state.addWall(1, 0, true);
+//		root.state.addWall(0, 2, true);
+>>>>>>> b8185c02d0fdbb79433127863c95be1324ca5ce2
 		
 		long time = System.nanoTime();
 		
@@ -75,6 +85,7 @@ public class GameAI {
 //		if(player == 0)
 //			printShortestPath(root, player);
 		
+<<<<<<< HEAD
 //		if(tile.isOccupied()) {	
 //			// Reached objective tile
 //			if(tile.pawn.owningPlayer == player) {
@@ -85,6 +96,19 @@ public class GameAI {
 		for(GameTile neighbor : tile.neighbors) {
 			if(!neighbor.equals(tile)) {
 				if(neighbor.value[player] > (mVal + 1)) {
+=======
+		if(tile.isOccupied()) {	
+			// Reached objective tile
+			if(tile.pawn.owningPlayer == player) {
+				return;
+			}
+		}
+	
+		for(GameTile neighbor : tile.neighbors) {
+			if(!neighbor.equals(tile)) {
+				if((neighbor.value[player] == -1)
+						|| neighbor.value[player] > (mVal + 1)) {
+>>>>>>> b8185c02d0fdbb79433127863c95be1324ca5ce2
 					neighbor.value[player] = mVal + 1;
 //					neighbor.parent[player] = tile;
 //					tile.child[player] = neighbor;
@@ -107,7 +131,11 @@ public class GameAI {
 			for(int col = 0; col < size; col++) {
 				GameTile tile = node.state.board.getTile(row, col);
 
+<<<<<<< HEAD
 				if(tile.value[player] == Integer.MAX_VALUE) {
+=======
+				if(tile.value[player] == -1) {
+>>>>>>> b8185c02d0fdbb79433127863c95be1324ca5ce2
 					System.out.print(" " + "x" + "");
 				} else {
 					if(tile.value[player] < 10) {
