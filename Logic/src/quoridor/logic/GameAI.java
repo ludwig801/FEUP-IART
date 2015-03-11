@@ -1,6 +1,7 @@
 package quoridor.logic;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class GameAI {
 	
@@ -26,58 +27,67 @@ public class GameAI {
 	public static void main(String[] args) {
 		GameState testState = new GameState();
 		GameAI testAI = new GameAI(testState);
-		
+
 		printShortestPath(root,0);
 		printShortestPath(root,1);
 	}
 	
 	public GameAI(GameState mInitialState) {
-		
 		root = new GameStateNode(mInitialState);
 		
-		root.state.addWall(2, 1, true);
-		root.state.addWall(1, 0, false);
+//		root.state.board.getTile(0, 2).removePawn();
+//		root.state.board.getTile(0, 1).setPawn(root.state.pawns.get(0));
+		
+		root.state.addWall(0, 1, false);
+		root.state.addWall(1, 2, false);
+		root.state.addWall(2, 0, true);
+		root.state.addWall(2, 2, true);
+		root.state.addWall(3, 1, true);
+		root.state.addWall(3, 3, true);
+		
+		long time = System.nanoTime();
 		
 		calcShortestPathsForBothPlayers();
+		
+		long elapsedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - time);
+		
+		System.out.println("Elapsed time: " + elapsedTime);
 	}
 
 	private void calcShortestPathsForBothPlayers() {
 		for(int player = 0; player < 2; player++) {
 			int victoryRow = (GameState.boardSize + player - 1) % GameState.boardSize;
-			for(int i = 0; i < root.state.boardSize; i++) {
+			for(int i = 0; i < GameState.boardSize; i++) {
 				GameTile tile = root.state.board.getTile(victoryRow, i);
 				tile.value[player] = 0;
 				calcShortestPathForPlayer(tile,tile.value[player],player,victoryRow);
-			}
-			
-			for(ArrayList<GameTile> mRows : root.state.board.tiles) {
-				for(GameTile mTile : mRows) {
-					mTile.visited = false;
-				}
 			}
 		}
 	}
 
 	private void calcShortestPathForPlayer(GameTile tile, int mVal, int player, int victoryRow) {
 		
-		if(tile.isOccupied()) {	
-			// Reached objective tile
-			if(tile.pawn.owningPlayer == player) {
-				if(tile.value[player] > mVal) {
-					tile.value[player] = mVal;
-				}
-				return;
-			}
-		}
+//		System.out.println("Node: (" + tile.row + "," + tile.col + ")");
+//		if(tile.parent[player] != null) {
+//			System.out.println("  Parent: (" + tile.parent[player].row + "," + tile.parent[player].col + ")");
+//		}
+		
+//		if(player == 0)
+//			printShortestPath(root, player);
+		
+//		if(tile.isOccupied()) {	
+//			// Reached objective tile
+//			if(tile.pawn.owningPlayer == player) {
+//				return;
+//			}
+//		}
 	
 		for(GameTile neighbor : tile.neighbors) {
 			if(!neighbor.equals(tile)) {
-				if(neighbor.value[player] == -1) {
+				if(neighbor.value[player] > (mVal + 1)) {
 					neighbor.value[player] = mVal + 1;
-					calcShortestPathForPlayer(neighbor, neighbor.value[player], player, victoryRow);
-				}
-				else if(neighbor.value[player] > (mVal + 1)) {
-					neighbor.value[player] = mVal + 1;
+//					neighbor.parent[player] = tile;
+//					tile.child[player] = neighbor;
 					calcShortestPathForPlayer(neighbor, neighbor.value[player], player, victoryRow);
 				}
 			}
@@ -96,34 +106,83 @@ public class GameAI {
 			final int prevRow = row - 1;
 			for(int col = 0; col < size; col++) {
 				GameTile tile = node.state.board.getTile(row, col);
-				
-				System.out.print("[" + tile.value[player] + "]");
+
+				if(tile.value[player] == Integer.MAX_VALUE) {
+					System.out.print(" " + "x" + "");
+				} else {
+					if(tile.value[player] < 10) {
+						System.out.print(" ");
+					}
+					System.out.print("" + tile.value[player] + "");
+				}
 
 				if(tile.isWalled() && tile.getWall().isVertical()) {
-					System.out.print("|");
+					System.out.print(" |");
 				} else if (row > 0 && node.state.board.getTile(prevRow, col).isWalled()
 						&& node.state.board.getTile(prevRow, col).getWall().isVertical()) {
-					System.out.print("|");
+					System.out.print(" |");
 				} else {
-					System.out.print(" ");
+					GameTile child = tile.child[player];
+					GameTile parent = tile.parent[player];
+					if(child != null && child.row == row && child.col == col + 1) {
+						System.out.print(" <");
+					} else if (parent != null && parent.row == row && parent.col == col + 1) {
+						System.out.print(" >");
+					} else {
+						System.out.print("  ");
+					}
 				}
 			}
 			System.out.println();
 			if(row < border) {
-				for(int j = 0; j < size; j++) {
-					if(node.state.board.getTile(row, j).isWalled()) {
-						if(node.state.board.getTile(row, j).getWall().isHorizontal()) {
+				for(int col = 0; col < size; col++) {
+					GameTile tile = node.state.board.getTile(row, col);
+					GameTile child = tile.child[player];
+					GameTile parent = tile.parent[player];
+					
+					if(tile.isWalled()) {
+						if(tile.getWall().isHorizontal()) {
 							System.out.print("----");
 						} else {
-							System.out.print("   |");
+							if(child != null && child.row == tile.row+1 && child.col == tile.col) {
+								System.out.print(" ^ |");
+							} else if (parent != null && parent.row == row+1 && parent.col == tile.col) {
+								System.out.print(" v |");
+							} else {
+								System.out.print("   |");
+							}
 						}
-						
-					}
-					else if(j > 0 && node.state.board.getTile(row, j-1).isWalled()
-							&& node.state.board.getTile(row, j-1).getWall().isHorizontal()) {
-						System.out.print("--- ");
+					} else if(col > 0) {
+						GameTile tileLeft = node.state.board.getTile(row, col-1);
+						if(tileLeft.isWalled()) {
+							if(tileLeft.getWall().isHorizontal()) {
+								System.out.print("--- ");
+							} else {
+								if(child != null && child.row == tile.row+1 && child.col == tile.col) {
+									System.out.print(" ^  ");
+								} else if (parent != null && parent.row == row+1 && parent.col == tile.col) {
+									System.out.print(" v  ");
+								} else {
+									System.out.print("    ");
+								}
+							}
+						} else {
+							if(child != null && child.row == tile.row+1 && child.col == tile.col) {
+								System.out.print(" ^  ");
+							} else if (parent != null && parent.row == row+1 && parent.col == tile.col) {
+								System.out.print(" v  ");
+							} else {
+								System.out.print("    ");
+							}
+						}
 					} else {
-						System.out.print("    ");
+						if(child != null && child.row == tile.row+1 && child.col == tile.col) {
+							System.out.print(" ^  ");
+						} else if (parent != null && parent.row == row+1 && parent.col == tile.col) {
+							System.out.print(" v  ");
+						} else {
+							System.out.print("    ");
+						}
 					}
 				}
 			}

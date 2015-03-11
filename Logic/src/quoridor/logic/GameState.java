@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class GameState {
 	
-	protected static final int boardSize = 5;
+	protected static final int boardSize = 9;
 
 	protected GameBoard board;
 	protected ArrayList<GamePawn> pawns;
@@ -20,8 +20,8 @@ public class GameState {
 		board = new GameBoard(boardSize);
 		
 		pawns = new ArrayList<GamePawn>(2);
-		pawns.add(new GamePawn(0,board.getTile(0, 4)));
-		pawns.add(new GamePawn(1,board.getTile(boardSize - 1, 4)));
+		pawns.add(new GamePawn(0,board.getTile(0, boardSize / 2)));
+		pawns.add(new GamePawn(1,board.getTile(boardSize - 1, boardSize / 2)));
 		currentPlayerIndex = 0;
 	}
 	
