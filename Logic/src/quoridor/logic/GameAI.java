@@ -35,25 +35,12 @@ public class GameAI {
 	public GameAI(GameState mInitialState) {
 		root = new GameStateNode(mInitialState);
 		
-<<<<<<< HEAD
-//		root.state.board.getTile(0, 2).removePawn();
-//		root.state.board.getTile(0, 1).setPawn(root.state.pawns.get(0));
-		
 		root.state.addWall(0, 1, false);
 		root.state.addWall(1, 2, false);
 		root.state.addWall(2, 0, true);
 		root.state.addWall(2, 2, true);
 		root.state.addWall(3, 1, true);
 		root.state.addWall(3, 3, true);
-=======
-//		root.state.addWall(0, 1, false);
-//		root.state.addWall(2, 1, false);
-//		root.state.addWall(3, 2, true);
-//		root.state.addWall(1, 2, true);
-//		root.state.addWall(2, 3, true);
-//		root.state.addWall(1, 0, true);
-//		root.state.addWall(0, 2, true);
->>>>>>> b8185c02d0fdbb79433127863c95be1324ca5ce2
 		
 		long time = System.nanoTime();
 		
