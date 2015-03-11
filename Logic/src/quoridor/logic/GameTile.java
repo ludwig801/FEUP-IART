@@ -37,8 +37,8 @@ public class GameTile {
 	// One array position for each player
 	public boolean visited;
 	public int[] value = new int[2];
-	public GameTile[] shortestPathParent = new GameTile[2];
-	public GameTile[] shortestPathChild = new GameTile[2];
+	public GameTile[] parent = new GameTile[2];
+	public GameTile[] child = new GameTile[2];
 	
 	public GameTile(int mRow, int mCol) {
 		this.row = mRow;
@@ -50,6 +50,9 @@ public class GameTile {
 		
 		this.value[0] = -1;
 		this.value[1] = -1;
+		
+		child[0] = null;
+		child[1] = null;
 	}
 	
 	public int getRow() {
