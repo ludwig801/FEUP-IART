@@ -2,7 +2,7 @@ package quoridor.logic;
 
 import java.util.ArrayList;
 
-public class GameBoard {
+public class GameBoard extends Object {
 
 	protected ArrayList<ArrayList<GameTile>> tiles;
 	
@@ -60,6 +60,10 @@ public class GameBoard {
 
 	public GameTile getTile(int mRow, int mCol) {
 		return tiles.get(mRow).get(mCol);
+	}
+	
+	public boolean isValidPosition(int mRow, int mCol) {
+		return mRow >= 0 && mRow <= getBorder() && mCol >= 0 && mCol <= getBorder();
 	}
 	
 	public int getSize() {

@@ -1,25 +1,25 @@
 package quoridor.logic;
 
-public class GamePawn {
+public class GamePawn extends Object {
 
-	protected GameTile positionTile;
-	protected int owningPlayer;
+	protected GameTile tile;
+	protected int player;
 	
 	public GamePawn(int mOwningPlayer, GameTile mPositionTile) {
-		this.owningPlayer = mOwningPlayer;
-		this.positionTile = mPositionTile;
-		this.positionTile.setPawn(this);
+		this.player = mOwningPlayer;
+		this.tile = mPositionTile;
+		this.tile.setPawn(this);
 	}
 	
 	public void setPositionTile(GameTile mTile) {
-		this.positionTile = mTile;
+		this.tile = mTile;
 	}
 	
-	public GameTile getPositionTile() {
-		return this.positionTile;
+	public GameTile getTile() {
+		return this.tile;
 	}
 	
 	public int getOwningPlayer() {
-		return this.owningPlayer;
+		return this.player;
 	}
 }

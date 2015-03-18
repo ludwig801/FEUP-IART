@@ -48,13 +48,8 @@ public class GameTile {
 		
 		this.visited = false;
 		
-<<<<<<< HEAD
 		this.value[0] = Integer.MAX_VALUE;
 		this.value[1] = Integer.MAX_VALUE;
-=======
-		this.value[0] = -1;
-		this.value[1] = -1;
->>>>>>> b8185c02d0fdbb79433127863c95be1324ca5ce2
 		
 		child[0] = null;
 		child[1] = null;

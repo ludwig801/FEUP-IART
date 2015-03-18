@@ -101,9 +101,9 @@ public class GameTests {
 		GameState logic = new GameState();
 		GameBoard board = logic.getGameBoard();
 		
-		logic.addWall(0, 4, true);
+		logic.setWall(0, 4, true);
 		
-		logic.addWall(7, 4, false);
+		logic.setWall(7, 4, false);
 		
 		assertTrue(board.getTile(0, 4).isWalled());
 		assertTrue(board.getTile(0, 4).getWall().isHorizontal());
@@ -117,16 +117,16 @@ public class GameTests {
 		GameState logic = new GameState();
 		GameBoard board = logic.getGameBoard();
 		
-		logic.addWall(0, 4, true);
+		logic.setWall(0, 4, true);
 		
 		assertTrue(board.getTile(0, 4).isWalled());
 		assertTrue(board.getTile(0, 4).getWall().isHorizontal());
 		
-		logic.addWall(0, 4, false);
+		logic.setWall(0, 4, false);
 
 		assertFalse(board.getTile(0, 4).getWall().isVertical());
 		
-		logic.addWall(0, 3, true);
+		logic.setWall(0, 3, true);
 		
 		assertFalse(board.getTile(0, 3).isWalled());
 	}

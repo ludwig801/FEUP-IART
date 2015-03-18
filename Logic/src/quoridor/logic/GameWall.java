@@ -1,6 +1,6 @@
 package quoridor.logic;
 
-public class GameWall {
+public class GameWall extends Object {
 
 	protected boolean horizontal;
 	
