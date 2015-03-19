@@ -2,7 +2,7 @@ package quoridor.logic;
 
 import java.io.PrintStream;
 
-public class GameState extends Object {
+public class GameState {
 	
 	public static final int boardSize = 9;
 	public static final int boardBorder = boardSize - 1;
@@ -54,7 +54,7 @@ public class GameState extends Object {
 	
 	private void movePawnImmediate(GamePawn mPawn, GameTile mTile) {
 		mPawn.setTile(mTile);
-		mTile.setPawn(mPawn);		
+		mTile.addPawn();		
 	}
 	
 	public boolean canMove(int mRow, int mCol) {
@@ -201,17 +201,17 @@ public class GameState extends Object {
 			GameTile mTileDown = board.getTile(mTile.row + 1, mTile.col);
 			GameTile mNeighborDown = board.getTile(mNeighbor.row + 1, mNeighbor.col);
 			
-			if(mTileDown.parent[currentPlayerIndex] == mTile) {
-				mTileDown.parent[currentPlayerIndex] = null;
-				if(mTile.child[currentPlayerIndex] == mTileDown) {
-					mTile.child[currentPlayerIndex] = null;
+			if(mTileDown.parent == mTile) {
+				mTileDown.parent = null;
+				if(mTile.child == mTileDown) {
+					mTile.child = null;
 				}
 			}
 			
-			if(mNeighborDown.parent[currentPlayerIndex] == mNeighbor) {
-				mNeighborDown.parent[currentPlayerIndex] = null;
-				if(mNeighbor.child[currentPlayerIndex] == mNeighborDown) {
-					mNeighbor.child[currentPlayerIndex] = null;
+			if(mNeighborDown.parent == mNeighbor) {
+				mNeighborDown.parent = null;
+				if(mNeighbor.child == mNeighborDown) {
+					mNeighbor.child = null;
 				}
 			}
 			
@@ -222,17 +222,17 @@ public class GameState extends Object {
 			GameTile mTileRight = board.getTile(mTile.row, mTile.col + 1);
 			GameTile mNeighborRight = board.getTile(mNeighbor.row, mNeighbor.col + 1);
 			
-			if(mTileRight.parent[currentPlayerIndex] == mTile) {
-				mTileRight.parent[currentPlayerIndex] = null;
-				if(mTile.child[currentPlayerIndex] == mTileRight) {
-					mTile.child[currentPlayerIndex] = null;
+			if(mTileRight.parent == mTile) {
+				mTileRight.parent = null;
+				if(mTile.child == mTileRight) {
+					mTile.child = null;
 				}
 			}
 			
-			if(mNeighborRight.parent[currentPlayerIndex] == mNeighbor) {
-				mNeighborRight.parent[currentPlayerIndex] = null;
-				if(mNeighbor.child[currentPlayerIndex] == mNeighborRight) {
-					mNeighbor.child[currentPlayerIndex] = null;
+			if(mNeighborRight.parent == mNeighbor) {
+				mNeighborRight.parent = null;
+				if(mNeighbor.child == mNeighborRight) {
+					mNeighbor.child = null;
 				}
 			}
 			
@@ -274,7 +274,11 @@ public class GameState extends Object {
 				out.print("[");
 				GameTile tile = board.getTile(row, col);
 				if(tile.isOccupied()) {
-					out.print(tile.pawn.player);
+					if(pawns[0].tile.equals(tile)) {
+						out.print("0");
+					} else {
+						out.print("1");
+					}
 				} else {
 					out.print(" ");
 				}

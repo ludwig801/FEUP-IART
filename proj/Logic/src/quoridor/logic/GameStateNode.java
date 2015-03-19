@@ -5,7 +5,6 @@ import java.util.ArrayList;
 public class GameStateNode {
 	
 	public Move move;
-	GameStateNode parent;
 	public ArrayList<GameStateNode> children;
 	
 	public int heuristicValue;
@@ -14,7 +13,7 @@ public class GameStateNode {
 	public int alpha, beta;
 	
 	// Leaf nodes only
-	public GameState state = null;
+	public GameState state;
 	
 	public GameStateNode(boolean pMax) {
 		this(null, null, pMax);
@@ -22,7 +21,6 @@ public class GameStateNode {
 	
 	public GameStateNode(GameStateNode pParent, Move pMove, boolean pMax) {
 		this.move = pMove;
-		this.parent = pParent;
 		this.children = new ArrayList<GameStateNode>();
 		
 		// TODO: verify these values

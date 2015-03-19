@@ -1,20 +1,15 @@
 package quoridor.logic;
 
-public class GameBoard extends Object {
+public class GameBoard {
 
 	public GameTile[][] tiles;
 	
 	public GameBoard(int k) {
 		int localSize = k;
 		
-		/* [!]
-		 * 
-		 * If mSize is an even number, then boardSize auto-adjusts to mSize + 1.
-		 * 
-		 */
+		// If mSize is an even number, then boardSize auto-adjusts to mSize + 1.
 		if(k % 2 == 0) {
 			localSize++;
-			//System.out.println("GameBoard() --> mSize(" + mSize + ") is even. (" + localSize + ") will be used.");
 		}
 		
 		// Initialize the multidimensional array that shall contain the game tiles.
