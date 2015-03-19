@@ -1,10 +1,8 @@
 package quoridor.logic;
 
-import java.util.ArrayList;
-
 public class GameBoard extends Object {
 
-	public ArrayList<ArrayList<GameTile>> tiles;
+	public GameTile[][] tiles;
 	
 	public GameBoard(int k) {
 		int localSize = k;
@@ -20,25 +18,24 @@ public class GameBoard extends Object {
 		}
 		
 		// Initialize the multidimensional array that shall contain the game tiles.
-		tiles = new ArrayList<ArrayList<GameTile>>();
+		tiles = new GameTile[localSize][localSize];
 		for(int i = 0; i < localSize; i++) {
-			tiles.add(new ArrayList<GameTile>());
 			for(int j = 0; j < localSize; j++) {
-				tiles.get(i).add(new GameTile(i,j));
+				tiles[i][j] = new GameTile(i,j);
 			}
 		}
 		
 		// Link the neighboring tiles
 		for(int i = 0; i < localSize; i++) {
-			ArrayList<GameTile> line = tiles.get(i);
+			GameTile[] line = tiles[i];
 			for(int j = 0; j < localSize; j++) {
-				GameTile tile = line.get(j);
+				GameTile tile = line[j];
 				
-				if(tile.col < (line.size()-1)) {
-					addLink(tile,line.get(tile.col+1));
+				if(tile.col < (line.length-1)) {
+					addLink(tile,line[tile.col+1]);
 				}
-				if(tile.row < (line.size()-1)) {
-					addLink(tile,tiles.get(tile.row+1).get(tile.col));
+				if(tile.row < (line.length-1)) {
+					addLink(tile,tiles[tile.row+1][tile.col]);
 				}
 			}
 		}
@@ -55,7 +52,7 @@ public class GameBoard extends Object {
 	}
 
 	public GameTile getTile(int mRow, int mCol) {
-		return tiles.get(mRow).get(mCol);
+		return tiles[mRow][mCol];
 	}
 	
 	public boolean isValidPosition(int mRow, int mCol) {
@@ -63,16 +60,16 @@ public class GameBoard extends Object {
 	}
 	
 	public int getSize() {
-		return tiles.size();
+		return tiles.length;
 	}
 	
 	public int getBorder() {
-		return tiles.size() - 1;
+		return tiles.length - 1;
 	}
 
 	public void printLinks() {
 		System.out.println("Board Links");
-		for(ArrayList<GameTile> line : tiles) {
+		for(GameTile[] line : tiles) {
 			for(GameTile tile : line) {
 				System.out.print("Tile(" + tile.row + ", " + tile.col + ") --> [");
 				for(GameTile neighbor : tile.neighbors) {

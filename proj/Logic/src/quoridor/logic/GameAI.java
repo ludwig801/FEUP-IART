@@ -1,50 +1,186 @@
 package quoridor.logic;
 
-import java.util.ArrayList;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 public class GameAI {
 
-	static int lookAhead = 2;
+	static int depth = 3;
 	
-	static GameStateNode root;
+	PrintStream out;
+	
+	private static GameState currentState;
+	
+	private static GameStateNode root;
 	
 	public static void main(String[] args) {
 		GameState testState = new GameState();
-		GameAI testAI = new GameAI(testState);
-
-		//printShortestPath(root,0);
-		//printShortestPath(root,1);
+		new GameAI(testState);
 	}
 	
 	public GameAI(GameState mInitialState) {
+		try {
+			out = new PrintStream("out.txt");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		Timer timer = new Timer();
 		
 		timer.start();
-		System.out.println("=== GAMESTATE INIT ===");
-		root = new GameStateNode(mInitialState);
-		System.out.println("Elapsed: " + timer.getParcial() + " nanoseconds");
-		
-		System.out.println("=== WALL PLACEMENT ===");
-		System.out.println("Elapsed: " + timer.getParcial() + " nanoseconds");
+		currentState = mInitialState;
+		root = new GameStateNode(true);
 
 		System.out.println("====== GAME TREE =====");
-		createGameTree(root, lookAhead);
+		createGameTree(root, depth);
+		//minimaxAlphaBeta(root, depth);
 		System.out.println("Elapsed: " + TimeUnit.NANOSECONDS.toMillis(timer.getParcial()) + " milliseconds");
 		
-		System.out.println("====== FINISHED ======");
-		System.out.println("Elapsed: " + timer.getTotal() + " nanoseconds");
-		
-		//printGameTreeDepthFirst(root);
-		
-		//System.out.println("======== BFS =======");
-		//printBreadthFirst(root);
-		
-		System.out.println("====== TREE SIZE =====");
-		System.out.println(getGameTreeSize(root));
+//		System.out.println("====== TREE SIZE =====");
+//		System.out.println(getGameTreeSize(root));
 	}
 	
+	private void createGameTree(GameStateNode node, int depth) {
+		LinkedList<Move> moves = new LinkedList<Move>();
+		createGameTree(moves,node,depth);
+	}
+	
+	private int createGameTree(LinkedList<Move> moves, GameStateNode node, int depth) {
+		
+		int val = 0;
+
+		if(depth == 0) {
+			node.state = new GameState(currentState);
+			val = createGameState(node, node.state, moves);
+			if(val >= 0) {
+				node.state = null;
+			}
+			return val;
+		}
+
+		Move tmpMove;
+		
+		// add vertical movements
+		for(int mRow = -1; mRow <= 1; mRow += 2) {
+			
+			tmpMove = new Move(mRow, 0);
+			node.addChild(node, tmpMove, !node.maxNode);
+			moves.addLast(tmpMove);
+			val = createGameTree(moves, node.getLastChild(), depth - 1);
+			moves.removeLast();
+			if(val > 0){
+				node.removeChild(node.getLastChild());
+				return val - 1;
+			}
+		}
+		
+		// add horizontal movements
+		for(int mCol = -1; mCol <= 1; mCol += 2) {
+			
+			tmpMove = new Move(0, mCol);
+			node.addChild(node, tmpMove, !node.maxNode);
+			moves.addLast(tmpMove);
+			val = createGameTree(moves, node.getLastChild(), depth - 1);
+			moves.removeLast();
+			if(val > 0){
+				node.removeChild(node.getLastChild());
+				return val - 1;
+			}
+		}
+		
+		// add walls
+		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
+			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
+				
+				tmpMove = new Move(mRow,mCol,true);
+				node.addChild(node, tmpMove, !node.maxNode);
+				moves.addLast(tmpMove);
+				val = createGameTree(moves, node.getLastChild(), depth - 1);
+				moves.removeLast();
+				if(val > 0){
+					node.removeChild(node.getLastChild());
+					return val - 1;
+				}
+				
+				tmpMove = new Move(mRow,mCol,false);
+				node.addChild(node, tmpMove, !node.maxNode);
+				moves.addLast(tmpMove);
+				val = createGameTree(moves, node.getLastChild(), depth - 1);
+				moves.removeLast();
+				if(val > 0){
+					node.removeChild(node.getLastChild());
+					return val - 1;
+				}
+			}
+		}
+		
+		return 0;
+	}
+
+	private int getHeuristicValue(GameState state) {
+		calcShortestPath(state);
+		
+		GameTile maxTile = state.pawns[0].tile;
+		GameTile minTile = state.pawns[1].tile;
+
+		return (minTile.value[1] + maxTile.row - maxTile.value[0] - (GameState.boardBorder - minTile.row));
+	}
+
+	private int createGameState(GameStateNode node, GameState state, LinkedList<Move> moves) {
+		int plies = moves.size()-1;
+		for(Move move : moves) {
+			//out.println(move.toString());
+			GameTile pawnTile = state.pawns[state.currentPlayerIndex].tile; 
+			if(move.type == Move.MOVE_PAWN) {
+				if(state.canMove(pawnTile.row + move.row, pawnTile.col + move.col)) {
+					state.movePawnTo(pawnTile.row + move.row, pawnTile.col + move.col);
+				} else {
+					break;
+				}
+			} else if(move.type == Move.SET_WALL) {
+				if(state.canSetWall(move.row, move.col, move.horizontal)) {
+					state.setWall(move.row, move.col, move.horizontal);
+				} else {
+					break;
+				}
+			}
+			state.nextTurn();
+			plies--;
+		}
+//		out.println("Plies: " + plies);
+		return plies;
+	}
+
+	public int minimaxAlphaBeta(GameStateNode node, int depth) {
+		if(depth == 0 /* || isTerminalNode(node) */) {
+			return node.heuristicValue;
+		}
+		if(node.maxNode) {
+			node.heuristicValue = Integer.MIN_VALUE;
+			for(GameStateNode child : node.children) {
+				node.heuristicValue = Math.max(node.heuristicValue, minimaxAlphaBeta(child, depth - 1));
+				node.alpha = Math.max(node.alpha, node.heuristicValue);
+				if(node.beta <= node.alpha) {
+					break;
+				}
+			}
+			return node.heuristicValue;
+		} else {
+			node.heuristicValue = Integer.MAX_VALUE;
+			for(GameStateNode child : node.children) {
+				node.heuristicValue = Math.min(node.heuristicValue, minimaxAlphaBeta(child,depth-1));
+				node.beta = Math.min(node.beta,node.heuristicValue);
+				if(node.beta <= node.alpha) {
+					break;
+				}
+			}
+			return node.heuristicValue;
+		}
+	}
+
 	private int getGameTreeSize(GameStateNode current) {
 		int sum = 1;
 		for(GameStateNode child : current.children) {
@@ -53,27 +189,14 @@ public class GameAI {
 		return sum;
 	}
 
-	private void createGameTree(GameStateNode current, int lookAhead2) {
-		if(lookAhead2 > 0) {
-			calcShortestPath(current);
-			
-			current.children = getNextGameStates(current);
-			
-			int newLevel = (lookAhead2 - 1);			
-			for(GameStateNode child : current.children) {
-				createGameTree(child, newLevel);
-			}
-		}
-	}
-
-	private void calcShortestPath(GameStateNode node) {
-		for(ArrayList<GameTile> row : node.board.tiles) {
+	private void calcShortestPath(GameState node) {
+		for(GameTile[] row : node.board.tiles) {
 			for(GameTile tile : row) {
 				tile.value[0] = Integer.MAX_VALUE;
 				tile.value[1] = Integer.MAX_VALUE;
 			}
 		}
-		for(int player = 0; player < 2; player++) {
+		for(int player = 0; player < GameState.numPlayers; player++) {
 			int victoryRow = (int)((GameState.boardSize + player - 1) % GameState.boardSize);
 			for(int i = 0; i < GameState.boardSize; i++) {
 				GameTile tile = node.board.getTile(victoryRow, i);
@@ -112,74 +235,25 @@ public class GameAI {
 		}
 	}
 	
-	public ArrayList<GameStateNode> getNextGameStates(GameState current) {
-		ArrayList<GameStateNode> toReturn = new ArrayList<GameStateNode>();
-		
-		// possible player moves
-		GameTile pawnPos = current.pawns.get(current.currentPlayerIndex).tile;
-		int mRow = pawnPos.row;
-		int mCol = pawnPos.col;
-		// left
-		if(current.canMove(mRow,mCol-1)) {
-			toReturn.add(new GameStateNode(current));
-			toReturn.get(toReturn.size()-1).movePawnTo(mRow, mCol-1);
-			toReturn.get(toReturn.size()-1).nextTurn();
-		}
-		// up
-		if(current.canMove(mRow-1,mCol)) {
-			toReturn.add(new GameStateNode(current));
-			toReturn.get(toReturn.size()-1).movePawnTo(mRow-1, mCol);
-			toReturn.get(toReturn.size()-1).nextTurn();
-		}
-		// right
-		if(current.canMove(mRow,mCol+1)) {
-			toReturn.add(new GameStateNode(current));
-			toReturn.get(toReturn.size()-1).movePawnTo(mRow, mCol+1);
-			toReturn.get(toReturn.size()-1).nextTurn();
-		}
-		// down
-		if(current.canMove(mRow+1,mCol)) {
-			toReturn.add(new GameStateNode(current));
-			toReturn.get(toReturn.size()-1).movePawnTo(mRow+1, mCol);
-			toReturn.get(toReturn.size()-1).nextTurn();
-		}
-		
-		for(ArrayList<GameTile> row : current.board.tiles) {
-			for(GameTile tile : row) {
-				if(current.canSetWall(tile.row, tile.col, true)) {
-					toReturn.add(new GameStateNode(current));
-					toReturn.get(toReturn.size()-1).setWall(tile.row, tile.col, true);
-					toReturn.get(toReturn.size()-1).nextTurn();
-				} else if(current.canSetWall(tile.row, tile.col, false)) {
-					toReturn.add(new GameStateNode(current));
-					toReturn.get(toReturn.size()-1).setWall(tile.row, tile.col, false);
-					toReturn.get(toReturn.size()-1).nextTurn();
-				}
-			}
-		}
-		
-		return toReturn;
-	}
-	
 	private void printDepthFirst(GameStateNode current) {
-		current.print();
-		for(GameStateNode child : current.children) {
-			child.print();
-			printDepthFirst(child);
-		}
+//		current.print();
+//		for(GameStateNode child : current.children) {
+//			child.print();
+//			printDepthFirst(child);
+//		}
 	}
 	
 	private void printBreadthFirst(GameStateNode current) {
-		LinkedList<GameStateNode> q = new LinkedList<GameStateNode>();
-		q.add(current);
-		while(!q.isEmpty()) {
-			GameStateNode v = q.poll();
-			v.print();
-			q.addAll(v.children);
-		}
+//		LinkedList<GameStateNode> q = new LinkedList<GameStateNode>();
+//		q.add(current);
+//		while(!q.isEmpty()) {
+//			GameStateNode v = q.poll();
+//			v.print();
+//			q.addAll(v.children);
+//		}
 	}
 	
-	public static void printShortestPath(GameStateNode node, int player) {
+	public static void printShortestPath(GameState node, int player) {
 		System.out.println("---------------------------------------");
 		System.out.println(" Shortest path lengths for: " + player);
 		System.out.println("---------------------------------------");

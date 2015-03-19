@@ -1,43 +1,43 @@
 package quoridor.logic;
 
-import java.util.ArrayList;
+import java.io.PrintStream;
 
 public class GameState extends Object {
 	
-	public static final short boardSize = 9;
+	public static final int boardSize = 9;
+	public static final int boardBorder = boardSize - 1;
+	public static final int numPawns = 2;
+	public static final int numPlayers = 2;
 
 	public GameBoard board;
-	public ArrayList<GamePawn> pawns;
+	public GamePawn[] pawns;
 	
 	public int currentPlayerIndex;
 	
 	public GameState() {
 		board = new GameBoard(boardSize);
 		
-		pawns = new ArrayList<GamePawn>(2);
-		pawns.add(new GamePawn(0,board.getTile(0, boardSize / 2)));
-		pawns.add(new GamePawn(1,board.getTile(boardSize - 1, boardSize / 2)));
+		pawns = new GamePawn[numPawns];
+		pawns[0] = new GamePawn(0,board.getTile(0, boardSize / 2));
+		pawns[1] = new GamePawn(1,board.getTile(boardSize - 1, boardSize / 2));
 		
 		currentPlayerIndex = 0;
 	}
 	
 	public GameState(GameState mGame) {
-		this();
+		board = new GameBoard(boardSize);
 		currentPlayerIndex = mGame.currentPlayerIndex;
-		for(ArrayList<GameTile> row : mGame.board.tiles) {
+		for(GameTile[] row : mGame.board.tiles) {
 			for(GameTile tile : row) {
 				if(tile.isWalled()) {
 					this.setWall(tile.row, tile.col, tile.wall.horizontal);
 				}
 			}
 		}
-		for(int i = 0; i < mGame.pawns.size(); i++) {
-			GamePawn p1 = mGame.pawns.get(i);
-			GamePawn p2 = this.pawns.get(i);
-			p2.tile.removePawn();
-			GameTile mTile = this.board.getTile(p1.tile.row, p1.tile.col);
-			movePawnImmediate(p2,mTile);
-		}
+		pawns = new GamePawn[numPawns];
+		pawns[0] = new GamePawn(0, mGame.pawns[0].tile);
+		pawns[1] = new GamePawn(1, mGame.pawns[1].tile);
+		currentPlayerIndex = mGame.currentPlayerIndex;
 	}
 
 	public void movePawnTo(int mRow, int mCol) {
@@ -45,7 +45,7 @@ public class GameState extends Object {
 	}
 	
 	private void movePawnTo(GameTile mTile) {
-		GamePawn pawn = pawns.get(currentPlayerIndex);
+		GamePawn pawn = pawns[currentPlayerIndex];
 		GameTile pawnTile = pawn.tile;
 		
 		pawnTile.removePawn();
@@ -61,7 +61,7 @@ public class GameState extends Object {
 		if(!board.isValidPosition(mRow, mCol)) {
 			return false;
 		}
-		GamePawn pawn = pawns.get(currentPlayerIndex);
+		GamePawn pawn = pawns[currentPlayerIndex];
 		GameTile pawnTile = pawn.tile;
 		return canMove(pawnTile, board.getTile(mRow, mCol));
 	}
@@ -259,11 +259,11 @@ public class GameState extends Object {
 		currentPlayerIndex %= 2;
 	}
 
-	public void print() {
-		System.out.println("===================================");
-		System.out.println("          Turn: Player " + currentPlayerIndex);
-		System.out.println("===================================");
-		System.out.println();
+	public void print(PrintStream out) {
+		out.println("===================================");
+		out.println("          Turn: Player " + currentPlayerIndex);
+		out.println("===================================");
+		out.println();
 		
 		final int size = board.getSize();
 		final int border = size - 1;
@@ -271,41 +271,41 @@ public class GameState extends Object {
 		for(int row = 0; row < size; row++) {
 			final int prevRow = row - 1;
 			for(int col = 0; col < size; col++) {
-				System.out.print("[");
+				out.print("[");
 				GameTile tile = board.getTile(row, col);
 				if(tile.isOccupied()) {
-					System.out.print(tile.pawn.player);
+					out.print(tile.pawn.player);
 				} else {
-					System.out.print(" ");
+					out.print(" ");
 				}
-				System.out.print("]");
+				out.print("]");
 				
 				if(tile.isWalled() && tile.wall.isVertical()) {
-					System.out.print("|");
+					out.print("|");
 				} else if (row > 0 && board.getTile(prevRow, col).isWalled() && board.getTile(prevRow, col).wall.isVertical()) {
-					System.out.print("|");
+					out.print("|");
 				} else {
-					System.out.print(" ");
+					out.print(" ");
 				}
 			}
-			System.out.println();
+			out.println();
 			if(row < border) {
 				for(int j = 0; j < size; j++) {
 					if(board.getTile(row, j).isWalled()) {
 						if(board.getTile(row, j).wall.isHorizontal()) {
-							System.out.print("----");
+							out.print("----");
 						} else {
-							System.out.print("   |");
+							out.print("   |");
 						}
 					}
 					else if(j > 0 && board.getTile(row, j-1).isWalled() && board.getTile(row, j-1).wall.isHorizontal()) {
-						System.out.print("--- ");
+						out.print("--- ");
 					} else {
-						System.out.print("    ");
+						out.print("    ");
 					}
 				}
 			}
-			System.out.println();
+			out.println();
 		}
 	}
 }

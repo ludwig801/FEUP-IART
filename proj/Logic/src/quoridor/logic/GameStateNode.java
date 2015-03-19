@@ -2,17 +2,45 @@ package quoridor.logic;
 
 import java.util.ArrayList;
 
-public class GameStateNode extends GameState {
+public class GameStateNode {
 	
+	public Move move;
+	GameStateNode parent;
 	public ArrayList<GameStateNode> children;
+	
+	public int heuristicValue;
+	public boolean maxNode;
+	// For alpha-beta pruning
 	public int alpha, beta;
 	
-	public GameStateNode(GameState mState) {
-		super(mState);
+	// Leaf nodes only
+	public GameState state = null;
+	
+	public GameStateNode(boolean pMax) {
+		this(null, null, pMax);
+	}
+	
+	public GameStateNode(GameStateNode pParent, Move pMove, boolean pMax) {
+		this.move = pMove;
+		this.parent = pParent;
 		this.children = new ArrayList<GameStateNode>();
 		
 		// TODO: verify these values
 		alpha = Integer.MIN_VALUE;
 		beta = Integer.MAX_VALUE;
+		
+		this.maxNode = pMax;
+	}
+	
+	public void addChild(GameStateNode pParent, Move pMove, boolean pMax) {
+		this.children.add(new GameStateNode(pParent,pMove,pMax));
+	}
+	
+	public void removeChild(GameStateNode pChild) {
+		this.children.remove(pChild);
+	}
+	
+	public GameStateNode getLastChild() {
+		return this.children.get(children.size() - 1);
 	}
 }
