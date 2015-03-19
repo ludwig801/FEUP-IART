@@ -33,7 +33,7 @@ public class GameAI {
 		createGameTree(root, lookAhead);
 		System.out.println("Elapsed: " + TimeUnit.NANOSECONDS.toMillis(timer.getParcial()) + " milliseconds");
 		
-		System.out.println("====== FINNISHED =====");
+		System.out.println("====== FINISHED ======");
 		System.out.println("Elapsed: " + timer.getTotal() + " nanoseconds");
 		
 		//printGameTreeDepthFirst(root);
@@ -41,8 +41,8 @@ public class GameAI {
 		//System.out.println("======== BFS =======");
 		//printBreadthFirst(root);
 		
-		//System.out.println("====== TREE SIZE =====");
-		//System.out.println(getGameTreeSize(root));
+		System.out.println("====== TREE SIZE =====");
+		System.out.println(getGameTreeSize(root));
 	}
 	
 	private int getGameTreeSize(GameStateNode current) {
@@ -57,7 +57,7 @@ public class GameAI {
 		if(lookAhead2 > 0) {
 			calcShortestPath(current);
 			
-			current.children = getNextGameStates(current.state);
+			current.children = getNextGameStates(current);
 			
 			int newLevel = (lookAhead2 - 1);			
 			for(GameStateNode child : current.children) {
@@ -67,7 +67,7 @@ public class GameAI {
 	}
 
 	private void calcShortestPath(GameStateNode node) {
-		for(ArrayList<GameTile> row : node.state.board.tiles) {
+		for(ArrayList<GameTile> row : node.board.tiles) {
 			for(GameTile tile : row) {
 				tile.value[0] = Integer.MAX_VALUE;
 				tile.value[1] = Integer.MAX_VALUE;
@@ -76,7 +76,7 @@ public class GameAI {
 		for(int player = 0; player < 2; player++) {
 			int victoryRow = (int)((GameState.boardSize + player - 1) % GameState.boardSize);
 			for(int i = 0; i < GameState.boardSize; i++) {
-				GameTile tile = node.state.board.getTile(victoryRow, i);
+				GameTile tile = node.board.getTile(victoryRow, i);
 				tile.value[player] = 0;
 				calcShortestPath(tile,tile.value[player],player,victoryRow);
 			}
@@ -116,44 +116,44 @@ public class GameAI {
 		ArrayList<GameStateNode> toReturn = new ArrayList<GameStateNode>();
 		
 		// possible player moves
-		GameTile pawnPos = current.pawns.get(current.currentPlayerIndex).getTile();
+		GameTile pawnPos = current.pawns.get(current.currentPlayerIndex).tile;
 		int mRow = pawnPos.row;
 		int mCol = pawnPos.col;
 		// left
 		if(current.canMove(mRow,mCol-1)) {
-			toReturn.add(new GameStateNode(new GameState(current)));
-			toReturn.get(toReturn.size()-1).state.movePawnTo(mRow, mCol-1);
-			toReturn.get(toReturn.size()-1).state.nextTurn();
+			toReturn.add(new GameStateNode(current));
+			toReturn.get(toReturn.size()-1).movePawnTo(mRow, mCol-1);
+			toReturn.get(toReturn.size()-1).nextTurn();
 		}
 		// up
 		if(current.canMove(mRow-1,mCol)) {
-			toReturn.add(new GameStateNode(new GameState(current)));
-			toReturn.get(toReturn.size()-1).state.movePawnTo(mRow-1, mCol);
-			toReturn.get(toReturn.size()-1).state.nextTurn();
+			toReturn.add(new GameStateNode(current));
+			toReturn.get(toReturn.size()-1).movePawnTo(mRow-1, mCol);
+			toReturn.get(toReturn.size()-1).nextTurn();
 		}
 		// right
 		if(current.canMove(mRow,mCol+1)) {
-			toReturn.add(new GameStateNode(new GameState(current)));
-			toReturn.get(toReturn.size()-1).state.movePawnTo(mRow, mCol+1);
-			toReturn.get(toReturn.size()-1).state.nextTurn();
+			toReturn.add(new GameStateNode(current));
+			toReturn.get(toReturn.size()-1).movePawnTo(mRow, mCol+1);
+			toReturn.get(toReturn.size()-1).nextTurn();
 		}
 		// down
 		if(current.canMove(mRow+1,mCol)) {
-			toReturn.add(new GameStateNode(new GameState(current)));
-			toReturn.get(toReturn.size()-1).state.movePawnTo(mRow+1, mCol);
-			toReturn.get(toReturn.size()-1).state.nextTurn();
+			toReturn.add(new GameStateNode(current));
+			toReturn.get(toReturn.size()-1).movePawnTo(mRow+1, mCol);
+			toReturn.get(toReturn.size()-1).nextTurn();
 		}
 		
 		for(ArrayList<GameTile> row : current.board.tiles) {
 			for(GameTile tile : row) {
 				if(current.canSetWall(tile.row, tile.col, true)) {
-					toReturn.add(new GameStateNode(new GameState(current)));
-					toReturn.get(toReturn.size()-1).state.setWall(tile.row, tile.col, true);
-					toReturn.get(toReturn.size()-1).state.nextTurn();
+					toReturn.add(new GameStateNode(current));
+					toReturn.get(toReturn.size()-1).setWall(tile.row, tile.col, true);
+					toReturn.get(toReturn.size()-1).nextTurn();
 				} else if(current.canSetWall(tile.row, tile.col, false)) {
-					toReturn.add(new GameStateNode(new GameState(current)));
-					toReturn.get(toReturn.size()-1).state.setWall(tile.row, tile.col, false);
-					toReturn.get(toReturn.size()-1).state.nextTurn();
+					toReturn.add(new GameStateNode(current));
+					toReturn.get(toReturn.size()-1).setWall(tile.row, tile.col, false);
+					toReturn.get(toReturn.size()-1).nextTurn();
 				}
 			}
 		}
@@ -162,9 +162,9 @@ public class GameAI {
 	}
 	
 	private void printDepthFirst(GameStateNode current) {
-		current.state.print();
+		current.print();
 		for(GameStateNode child : current.children) {
-			child.state.print();
+			child.print();
 			printDepthFirst(child);
 		}
 	}
@@ -174,7 +174,7 @@ public class GameAI {
 		q.add(current);
 		while(!q.isEmpty()) {
 			GameStateNode v = q.poll();
-			v.state.print();
+			v.print();
 			q.addAll(v.children);
 		}
 	}
@@ -184,13 +184,13 @@ public class GameAI {
 		System.out.println(" Shortest path lengths for: " + player);
 		System.out.println("---------------------------------------");
 		
-		final int size = node.state.board.getSize();
+		final int size = node.board.getSize();
 		final int border = size - 1;
 		
 		for(int row = 0; row < size; row++) {
 			final int prevRow = row - 1;
 			for(int col = 0; col < size; col++) {
-				GameTile tile = node.state.board.getTile(row, col);
+				GameTile tile = node.board.getTile(row, col);
 
 				if(tile.value[player] == Integer.MAX_VALUE) {
 					System.out.print(" " + "x" + "");
@@ -201,10 +201,10 @@ public class GameAI {
 					System.out.print("" + tile.value[player] + "");
 				}
 
-				if(tile.isWalled() && tile.getWall().isVertical()) {
+				if(tile.isWalled() && tile.wall.isVertical()) {
 					System.out.print(" |");
-				} else if (row > 0 && node.state.board.getTile(prevRow, col).isWalled()
-						&& node.state.board.getTile(prevRow, col).getWall().isVertical()) {
+				} else if (row > 0 && node.board.getTile(prevRow, col).isWalled()
+						&& node.board.getTile(prevRow, col).wall.isVertical()) {
 					System.out.print(" |");
 				} else {
 					GameTile child = tile.child[player];
@@ -221,12 +221,12 @@ public class GameAI {
 			System.out.println();
 			if(row < border) {
 				for(int col = 0; col < size; col++) {
-					GameTile tile = node.state.board.getTile(row, col);
+					GameTile tile = node.board.getTile(row, col);
 					GameTile child = tile.child[player];
 					GameTile parent = tile.parent[player];
 					
 					if(tile.isWalled()) {
-						if(tile.getWall().isHorizontal()) {
+						if(tile.wall.isHorizontal()) {
 							System.out.print("----");
 						} else {
 							if(child != null && child.row == tile.row+1 && child.col == tile.col) {
@@ -238,9 +238,9 @@ public class GameAI {
 							}
 						}
 					} else if(col > 0) {
-						GameTile tileLeft = node.state.board.getTile(row, col-1);
+						GameTile tileLeft = node.board.getTile(row, col-1);
 						if(tileLeft.isWalled()) {
-							if(tileLeft.getWall().isHorizontal()) {
+							if(tileLeft.wall.isHorizontal()) {
 								System.out.print("--- ");
 							} else {
 								if(child != null && child.row == tile.row+1 && child.col == tile.col) {

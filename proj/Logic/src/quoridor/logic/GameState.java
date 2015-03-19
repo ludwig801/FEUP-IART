@@ -4,17 +4,12 @@ import java.util.ArrayList;
 
 public class GameState extends Object {
 	
-	protected static final short boardSize = 9;
+	public static final short boardSize = 9;
 
-	protected GameBoard board;
-	protected ArrayList<GamePawn> pawns;
+	public GameBoard board;
+	public ArrayList<GamePawn> pawns;
 	
-	protected int currentPlayerIndex;
-	
-	public static void main(String[] args) {
-		GameState state = new GameState();
-		state.playGame();
-	}
+	public int currentPlayerIndex;
 	
 	public GameState() {
 		board = new GameBoard(boardSize);
@@ -45,17 +40,13 @@ public class GameState extends Object {
 		}
 	}
 
-	public void playGame() {
-		// TODO : game logic
-	}
-	
 	public void movePawnTo(int mRow, int mCol) {
 		movePawnTo(board.getTile(mRow, mCol));
 	}
 	
 	private void movePawnTo(GameTile mTile) {
 		GamePawn pawn = pawns.get(currentPlayerIndex);
-		GameTile pawnTile = pawn.getTile();
+		GameTile pawnTile = pawn.tile;
 		
 		pawnTile.removePawn();
 		movePawnImmediate(pawn,mTile);
@@ -71,7 +62,7 @@ public class GameState extends Object {
 			return false;
 		}
 		GamePawn pawn = pawns.get(currentPlayerIndex);
-		GameTile pawnTile = pawn.getTile();
+		GameTile pawnTile = pawn.tile;
 		return canMove(pawnTile, board.getTile(mRow, mCol));
 	}
 	
@@ -224,10 +215,8 @@ public class GameState extends Object {
 				}
 			}
 			
-			mTile.removeNeighbor(mTileDown);
-			mTileDown.removeNeighbor(mTile);
-			mNeighbor.removeNeighbor(mNeighborDown);
-			mNeighborDown.removeNeighbor(mNeighbor);
+			board.removeLink(mTile, mTileDown);
+			board.removeLink(mNeighbor, mNeighborDown);
 		} else {
 			mNeighbor = board.getTile(mTile.row+1, mTile.col);
 			GameTile mTileRight = board.getTile(mTile.row, mTile.col + 1);
@@ -247,20 +236,18 @@ public class GameState extends Object {
 				}
 			}
 			
-			mTile.removeNeighbor(mTileRight);
-			mTileRight.removeNeighbor(mTile);
-			mNeighbor.removeNeighbor(mNeighborRight);
-			mNeighborRight.removeNeighbor(mNeighbor);
+			board.removeLink(mTile, mTileRight);
+			board.removeLink(mNeighbor, mNeighborRight);
 		}
 		mTile.setWall(new GameWall(mHorizontal));
 	}
 
 	public boolean checkMoveDistance(GameTile tileFrom, GameTile tileTo) {
-		if(Math.abs(tileTo.getRow() - tileFrom.getRow()) > 1) {
+		if(Math.abs(tileTo.row - tileFrom.row) > 1) {
 			return false;
 		}
 		
-		if(Math.abs(tileTo.getCol() - tileFrom.getCol()) > 1) {
+		if(Math.abs(tileTo.col - tileFrom.col) > 1) {
 			return false;
 		}
 		
@@ -271,19 +258,7 @@ public class GameState extends Object {
 		currentPlayerIndex++;
 		currentPlayerIndex %= 2;
 	}
-	
-	public int getCurrentPlayerIndex() {	
-		return this.currentPlayerIndex;
-	}
-	
-	public GameBoard getGameBoard() {
-		return this.board;
-	}
-	
-	public ArrayList<GamePawn> getPawns() {
-		return this.pawns;
-	}
-	
+
 	public void print() {
 		System.out.println("===================================");
 		System.out.println("          Turn: Player " + currentPlayerIndex);
@@ -299,15 +274,15 @@ public class GameState extends Object {
 				System.out.print("[");
 				GameTile tile = board.getTile(row, col);
 				if(tile.isOccupied()) {
-					System.out.print(tile.getPawn().getOwningPlayer());
+					System.out.print(tile.pawn.player);
 				} else {
 					System.out.print(" ");
 				}
 				System.out.print("]");
 				
-				if(tile.isWalled() && tile.getWall().isVertical()) {
+				if(tile.isWalled() && tile.wall.isVertical()) {
 					System.out.print("|");
-				} else if (row > 0 && board.getTile(prevRow, col).isWalled() && board.getTile(prevRow, col).getWall().isVertical()) {
+				} else if (row > 0 && board.getTile(prevRow, col).isWalled() && board.getTile(prevRow, col).wall.isVertical()) {
 					System.out.print("|");
 				} else {
 					System.out.print(" ");
@@ -317,13 +292,13 @@ public class GameState extends Object {
 			if(row < border) {
 				for(int j = 0; j < size; j++) {
 					if(board.getTile(row, j).isWalled()) {
-						if(board.getTile(row, j).getWall().isHorizontal()) {
+						if(board.getTile(row, j).wall.isHorizontal()) {
 							System.out.print("----");
 						} else {
 							System.out.print("   |");
 						}
 					}
-					else if(j > 0 && board.getTile(row, j-1).isWalled() && board.getTile(row, j-1).getWall().isHorizontal()) {
+					else if(j > 0 && board.getTile(row, j-1).isWalled() && board.getTile(row, j-1).wall.isHorizontal()) {
 						System.out.print("--- ");
 					} else {
 						System.out.print("    ");

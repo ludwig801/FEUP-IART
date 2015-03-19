@@ -28,14 +28,13 @@ public class GameTile {
 	 * =====================================================================
 	 */
 	
-	protected int row, col;
-	protected ArrayList<GameTile> neighbors;
-	protected GamePawn pawn;
-	protected GameWall wall;
+	public int row, col;
+	public ArrayList<GameTile> neighbors;
+	public GamePawn pawn;
+	public GameWall wall;
 	
 	// Shortest path to victory
 	// One array position for each player
-	public boolean visited;
 	public int[] value = new int[2];
 	public GameTile[] parent = new GameTile[2];
 	public GameTile[] child = new GameTile[2];
@@ -46,8 +45,6 @@ public class GameTile {
 		
 		this.neighbors = new ArrayList<GameTile>();
 		
-		this.visited = false;
-		
 		this.value[0] = Integer.MAX_VALUE;
 		this.value[1] = Integer.MAX_VALUE;
 		
@@ -55,24 +52,12 @@ public class GameTile {
 		child[1] = null;
 	}
 	
-	public int getRow() {
-		return this.row;
-	}
-	
-	public int getCol() {
-		return this.col;
-	}
-
 	public boolean isOccupied() {
 		return this.pawn != null;
 	}
 	
 	public void setPawn(GamePawn mPawn) {
 		this.pawn = mPawn;
-	}
-	
-	public GamePawn getPawn() {
-		return this.pawn;
 	}
 	
 	public void removePawn() {
@@ -87,10 +72,6 @@ public class GameTile {
 		this.wall = mWall;
 	}
 	
-	public GameWall getWall() {
-		return this.wall;
-	}
-	
 	public void removeWall() {
 		this.wall = null;
 	}
@@ -101,10 +82,6 @@ public class GameTile {
 	
 	public void removeNeighbor(GameTile mTile) {
 		this.neighbors.remove(mTile);
-	}
-
-	public ArrayList<GameTile> getNeighbors() {
-		return this.neighbors;
 	}
 	
 }

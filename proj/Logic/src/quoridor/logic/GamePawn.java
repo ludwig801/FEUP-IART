@@ -2,8 +2,8 @@ package quoridor.logic;
 
 public class GamePawn extends Object {
 
-	protected GameTile tile;
-	protected int player;
+	public GameTile tile;
+	public int player;
 	
 	public GamePawn(int mOwningPlayer, GameTile mPositionTile) {
 		this.player = mOwningPlayer;
@@ -13,13 +13,5 @@ public class GamePawn extends Object {
 	
 	public void setTile(GameTile mTile) {
 		this.tile = mTile;
-	}
-	
-	public GameTile getTile() {
-		return this.tile;
-	}
-	
-	public int getOwningPlayer() {
-		return this.player;
 	}
 }
