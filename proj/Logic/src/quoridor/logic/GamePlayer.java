@@ -2,10 +2,10 @@ package quoridor.logic;
 
 public class GamePlayer {
 
-	protected int id;
+	protected byte id;
 	protected String name;
 	
-	public GamePlayer(int mId, String mName) {
+	public GamePlayer(byte mId, String mName) {
 		this.id = mId;
 		this.name = mName;
 	}

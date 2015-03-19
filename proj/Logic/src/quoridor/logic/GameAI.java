@@ -1,34 +1,21 @@
 package quoridor.logic;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.concurrent.TimeUnit;
 
 public class GameAI {
-	
-	class GameStateNode {
-		
-		public GameState state;
-		public ArrayList<GameStateNode> children;
-		public int alpha, beta;
-		
-		public GameStateNode(GameState mState) {
-			this.children = new ArrayList<GameStateNode>();
-			
-			this.state = mState;
-			
-			// TODO: verify these values
-			alpha = Integer.MIN_VALUE;
-			beta = Integer.MAX_VALUE;
-		}
-	}
 
+	static int lookAhead = 2;
+	
 	static GameStateNode root;
 	
 	public static void main(String[] args) {
 		GameState testState = new GameState();
 		GameAI testAI = new GameAI(testState);
 
-		printShortestPath(root,0);
-		printShortestPath(root,1);
+		//printShortestPath(root,0);
+		//printShortestPath(root,1);
 	}
 	
 	public GameAI(GameState mInitialState) {
@@ -40,47 +27,63 @@ public class GameAI {
 		System.out.println("Elapsed: " + timer.getParcial() + " nanoseconds");
 		
 		System.out.println("=== WALL PLACEMENT ===");
-		root.state.setWall(0, 1, false);
-		root.state.setWall(1, 2, false);
-		root.state.setWall(2, 0, true);
-		root.state.setWall(2, 2, true);
-		root.state.setWall(3, 1, true);
-		root.state.setWall(3, 3, true);
-//		root.state.addWall(1, 0, true);
 		System.out.println("Elapsed: " + timer.getParcial() + " nanoseconds");
-		
-		System.out.println("== CALC SHORT. PATH ==");
-		calcShortestPathsForBothPlayers(root);
-		System.out.println("Elapsed: " + timer.getParcial() + " nanoseconds");
+
+		System.out.println("====== GAME TREE =====");
+		createGameTree(root, lookAhead);
+		System.out.println("Elapsed: " + TimeUnit.NANOSECONDS.toMillis(timer.getParcial()) + " milliseconds");
 		
 		System.out.println("====== FINNISHED =====");
 		System.out.println("Elapsed: " + timer.getTotal() + " nanoseconds");
 		
-		getNextPossibleGameStates(mInitialState);
+		//printGameTreeDepthFirst(root);
+		
+		//System.out.println("======== BFS =======");
+		//printBreadthFirst(root);
+		
+		//System.out.println("====== TREE SIZE =====");
+		//System.out.println(getGameTreeSize(root));
 	}
 	
-	private void recalcShortestPathsForBothPlayers(GameStateNode node) {
+	private int getGameTreeSize(GameStateNode current) {
+		int sum = 1;
+		for(GameStateNode child : current.children) {
+			sum += getGameTreeSize(child);
+		}
+		return sum;
+	}
+
+	private void createGameTree(GameStateNode current, int lookAhead2) {
+		if(lookAhead2 > 0) {
+			calcShortestPath(current);
+			
+			current.children = getNextGameStates(current.state);
+			
+			int newLevel = (lookAhead2 - 1);			
+			for(GameStateNode child : current.children) {
+				createGameTree(child, newLevel);
+			}
+		}
+	}
+
+	private void calcShortestPath(GameStateNode node) {
 		for(ArrayList<GameTile> row : node.state.board.tiles) {
 			for(GameTile tile : row) {
 				tile.value[0] = Integer.MAX_VALUE;
 				tile.value[1] = Integer.MAX_VALUE;
 			}
 		}
-		calcShortestPathsForBothPlayers(node);
-	}
-
-	private void calcShortestPathsForBothPlayers(GameStateNode node) {
 		for(int player = 0; player < 2; player++) {
-			int victoryRow = (GameState.boardSize + player - 1) % GameState.boardSize;
+			int victoryRow = (int)((GameState.boardSize + player - 1) % GameState.boardSize);
 			for(int i = 0; i < GameState.boardSize; i++) {
 				GameTile tile = node.state.board.getTile(victoryRow, i);
 				tile.value[player] = 0;
-				calcShortestPathForPlayer(tile,tile.value[player],player,victoryRow);
+				calcShortestPath(tile,tile.value[player],player,victoryRow);
 			}
 		}
 	}
 
-	private void calcShortestPathForPlayer(GameTile tile, int mVal, int player, int victoryRow) {
+	private void calcShortestPath(GameTile tile, int mVal, int player, int victoryRow) {
 		
 //		System.out.println("Node: (" + tile.row + "," + tile.col + ")");
 //		if(tile.parent[player] != null) {
@@ -100,16 +103,16 @@ public class GameAI {
 		for(GameTile neighbor : tile.neighbors) {
 			if(!neighbor.equals(tile)) {
 				if(neighbor.value[player] > (mVal + 1)) {
-					neighbor.value[player] = mVal + 1;
+					neighbor.value[player] = (mVal + 1);
 					neighbor.parent[player] = tile;
 					tile.child[player] = neighbor;
-					calcShortestPathForPlayer(neighbor, neighbor.value[player], player, victoryRow);
+					calcShortestPath(neighbor, neighbor.value[player], player, victoryRow);
 				}
 			}
 		}
 	}
 	
-	public ArrayList<GameStateNode> getNextPossibleGameStates(GameState current) {
+	public ArrayList<GameStateNode> getNextGameStates(GameState current) {
 		ArrayList<GameStateNode> toReturn = new ArrayList<GameStateNode>();
 		
 		// possible player moves
@@ -141,11 +144,39 @@ public class GameAI {
 			toReturn.get(toReturn.size()-1).state.nextTurn();
 		}
 		
-		for(GameStateNode node : toReturn) {
-			node.state.print();
+		for(ArrayList<GameTile> row : current.board.tiles) {
+			for(GameTile tile : row) {
+				if(current.canSetWall(tile.row, tile.col, true)) {
+					toReturn.add(new GameStateNode(new GameState(current)));
+					toReturn.get(toReturn.size()-1).state.setWall(tile.row, tile.col, true);
+					toReturn.get(toReturn.size()-1).state.nextTurn();
+				} else if(current.canSetWall(tile.row, tile.col, false)) {
+					toReturn.add(new GameStateNode(new GameState(current)));
+					toReturn.get(toReturn.size()-1).state.setWall(tile.row, tile.col, false);
+					toReturn.get(toReturn.size()-1).state.nextTurn();
+				}
+			}
 		}
 		
 		return toReturn;
+	}
+	
+	private void printDepthFirst(GameStateNode current) {
+		current.state.print();
+		for(GameStateNode child : current.children) {
+			child.state.print();
+			printDepthFirst(child);
+		}
+	}
+	
+	private void printBreadthFirst(GameStateNode current) {
+		LinkedList<GameStateNode> q = new LinkedList<GameStateNode>();
+		q.add(current);
+		while(!q.isEmpty()) {
+			GameStateNode v = q.poll();
+			v.state.print();
+			q.addAll(v.children);
+		}
 	}
 	
 	public static void printShortestPath(GameStateNode node, int player) {

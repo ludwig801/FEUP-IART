@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class GameState extends Object {
 	
-	protected static final int boardSize = 9;
+	protected static final short boardSize = 9;
 
 	protected GameBoard board;
 	protected ArrayList<GamePawn> pawns;
@@ -36,28 +36,34 @@ public class GameState extends Object {
 				}
 			}
 		}
+		for(int i = 0; i < mGame.pawns.size(); i++) {
+			GamePawn p1 = mGame.pawns.get(i);
+			GamePawn p2 = this.pawns.get(i);
+			p2.tile.removePawn();
+			GameTile mTile = this.board.getTile(p1.tile.row, p1.tile.col);
+			movePawnImmediate(p2,mTile);
+		}
 	}
 
 	public void playGame() {
 		// TODO : game logic
 	}
 	
-	public boolean movePawnTo(int mRow, int mCol) {
-		return movePawnTo(board.getTile(mRow, mCol));
+	public void movePawnTo(int mRow, int mCol) {
+		movePawnTo(board.getTile(mRow, mCol));
 	}
 	
-	private boolean movePawnTo(GameTile mTile) {
+	private void movePawnTo(GameTile mTile) {
 		GamePawn pawn = pawns.get(currentPlayerIndex);
 		GameTile pawnTile = pawn.getTile();
 		
-		if(!canMove(pawnTile, mTile)) {
-			return false;
-		}
-		
 		pawnTile.removePawn();
-		pawn.setPositionTile(mTile);
-		mTile.setPawn(pawn);
-		return true;
+		movePawnImmediate(pawn,mTile);
+	}
+	
+	private void movePawnImmediate(GamePawn mPawn, GameTile mTile) {
+		mPawn.setTile(mTile);
+		mTile.setPawn(mPawn);		
 	}
 	
 	public boolean canMove(int mRow, int mCol) {
@@ -142,83 +148,111 @@ public class GameState extends Object {
 		return true;
 	}
 
-	public boolean setWall(int mRow, int mCol, boolean mHorizontal) {
-		GameTile neighbor;
-		if(mHorizontal) {
-			if(mCol < board.getBorder()) {
-				neighbor = board.getTile(mRow, mCol+1);
-				if(neighbor.isWalled()) {
-					return false;
-				}
-			} else {
-				return false;
-			}
-			
-		} else {
-			if(mRow < board.getBorder()) {
-				neighbor = board.getTile(mRow+1, mCol);
-				if(neighbor.isWalled()) {
-					return false;
-				}
-			} else {
-				return false;
-			}
-		}
-		return setWall(board.getTile(mRow, mCol),neighbor,mHorizontal);
+	public boolean canSetWall(int mRow, int mCol, boolean mHorizontal) {
+		return canSetWall(board.getTile(mRow, mCol),mHorizontal);
 	}
 	
-	private boolean setWall(GameTile mTile, GameTile mNeighbor, boolean mHorizontal) {
-		if(!mTile.isWalled()) {
-			if(mHorizontal) {
-				GameTile mTileDown = board.getTile(mTile.row + 1, mTile.col);
-				GameTile mNeighborDown = board.getTile(mNeighbor.row + 1, mNeighbor.col);
-				
-				if(mTileDown.parent[currentPlayerIndex] == mTile) {
-					mTileDown.parent[currentPlayerIndex] = null;
-					if(mTile.child[currentPlayerIndex] == mTileDown) {
-						mTile.child[currentPlayerIndex] = null;
-					}
-				}
-				
-				if(mNeighborDown.parent[currentPlayerIndex] == mNeighbor) {
-					mNeighborDown.parent[currentPlayerIndex] = null;
-					if(mNeighbor.child[currentPlayerIndex] == mNeighborDown) {
-						mNeighbor.child[currentPlayerIndex] = null;
-					}
-				}
- 				
-				mTile.removeNeighbor(mTileDown);
-				mTileDown.removeNeighbor(mTile);
-				mNeighbor.removeNeighbor(mNeighborDown);
-				mNeighborDown.removeNeighbor(mNeighbor);
-			} else {
-				GameTile mTileRight = board.getTile(mTile.row, mTile.col + 1);
-				GameTile mNeighborRight = board.getTile(mNeighbor.row, mNeighbor.col + 1);
-				
-				if(mTileRight.parent[currentPlayerIndex] == mTile) {
-					mTileRight.parent[currentPlayerIndex] = null;
-					if(mTile.child[currentPlayerIndex] == mTileRight) {
-						mTile.child[currentPlayerIndex] = null;
-					}
-				}
-				
-				if(mNeighborRight.parent[currentPlayerIndex] == mNeighbor) {
-					mNeighborRight.parent[currentPlayerIndex] = null;
-					if(mNeighbor.child[currentPlayerIndex] == mNeighborRight) {
-						mNeighbor.child[currentPlayerIndex] = null;
-					}
-				}
-				
-				mTile.removeNeighbor(mTileRight);
-				mTileRight.removeNeighbor(mTile);
-				mNeighbor.removeNeighbor(mNeighborRight);
-				mNeighborRight.removeNeighbor(mNeighbor);
-			}
-			mTile.setWall(new GameWall(mHorizontal));
-			return true;
-		} else {
+	private boolean canSetWall(GameTile mTile, boolean mHorizontal) {
+		if(mTile.isWalled()) {
 			return false;
 		}
+
+		if(mTile.row == board.getBorder() || mTile.col == board.getBorder()) {
+			return false;
+		}
+		
+		int mRow = mTile.row;
+		int mCol = mTile.col;
+		GameTile neighbor;
+		
+		if(mHorizontal) {
+			// The left tile cannot have an horizontal wall
+			if(board.isValidPosition(mRow, mCol-1)) {
+				neighbor = board.getTile(mRow, mCol-1);
+				if(neighbor.isWalled() && neighbor.wall.isHorizontal()) {
+					return false;
+				}
+			}
+			// The right tile cannot have an horizontal wall
+			if(board.isValidPosition(mRow, mCol+1)) {
+				neighbor = board.getTile(mRow, mCol+1);
+				if(neighbor.isWalled() && neighbor.wall.isHorizontal()) {
+					return false;
+				}
+			}
+			return true;
+		} else { // Vertical
+			// The upper tile cannot have an horizontal wall
+			if(board.isValidPosition(mRow-1, mCol)) {
+				neighbor = board.getTile(mRow-1, mCol);
+				if(neighbor.isWalled() && neighbor.wall.isVertical()) {
+					return false;
+				}
+			}
+			// The down tile cannot have an horizontal wall
+			if(board.isValidPosition(mRow+1, mCol)) {
+				neighbor = board.getTile(mRow+1, mCol);
+				if(neighbor.isWalled() && neighbor.wall.isVertical()) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+	
+	public void setWall(int mRow, int mCol, boolean mHorizontal) {
+		
+		GameTile mTile = board.getTile(mRow, mCol);
+		GameTile mNeighbor;
+
+		if(mHorizontal) {
+			mNeighbor = board.getTile(mTile.row, mTile.col+1);
+			GameTile mTileDown = board.getTile(mTile.row + 1, mTile.col);
+			GameTile mNeighborDown = board.getTile(mNeighbor.row + 1, mNeighbor.col);
+			
+			if(mTileDown.parent[currentPlayerIndex] == mTile) {
+				mTileDown.parent[currentPlayerIndex] = null;
+				if(mTile.child[currentPlayerIndex] == mTileDown) {
+					mTile.child[currentPlayerIndex] = null;
+				}
+			}
+			
+			if(mNeighborDown.parent[currentPlayerIndex] == mNeighbor) {
+				mNeighborDown.parent[currentPlayerIndex] = null;
+				if(mNeighbor.child[currentPlayerIndex] == mNeighborDown) {
+					mNeighbor.child[currentPlayerIndex] = null;
+				}
+			}
+			
+			mTile.removeNeighbor(mTileDown);
+			mTileDown.removeNeighbor(mTile);
+			mNeighbor.removeNeighbor(mNeighborDown);
+			mNeighborDown.removeNeighbor(mNeighbor);
+		} else {
+			mNeighbor = board.getTile(mTile.row+1, mTile.col);
+			GameTile mTileRight = board.getTile(mTile.row, mTile.col + 1);
+			GameTile mNeighborRight = board.getTile(mNeighbor.row, mNeighbor.col + 1);
+			
+			if(mTileRight.parent[currentPlayerIndex] == mTile) {
+				mTileRight.parent[currentPlayerIndex] = null;
+				if(mTile.child[currentPlayerIndex] == mTileRight) {
+					mTile.child[currentPlayerIndex] = null;
+				}
+			}
+			
+			if(mNeighborRight.parent[currentPlayerIndex] == mNeighbor) {
+				mNeighborRight.parent[currentPlayerIndex] = null;
+				if(mNeighbor.child[currentPlayerIndex] == mNeighborRight) {
+					mNeighbor.child[currentPlayerIndex] = null;
+				}
+			}
+			
+			mTile.removeNeighbor(mTileRight);
+			mTileRight.removeNeighbor(mTile);
+			mNeighbor.removeNeighbor(mNeighborRight);
+			mNeighborRight.removeNeighbor(mNeighbor);
+		}
+		mTile.setWall(new GameWall(mHorizontal));
 	}
 
 	public boolean checkMoveDistance(GameTile tileFrom, GameTile tileTo) {
@@ -288,7 +322,6 @@ public class GameState extends Object {
 						} else {
 							System.out.print("   |");
 						}
-						
 					}
 					else if(j > 0 && board.getTile(row, j-1).isWalled() && board.getTile(row, j-1).getWall().isHorizontal()) {
 						System.out.print("--- ");

@@ -6,8 +6,8 @@ public class GameBoard extends Object {
 
 	protected ArrayList<ArrayList<GameTile>> tiles;
 	
-	public GameBoard(int mSize) {
-		int localSize = mSize;
+	public GameBoard(short mSize) {
+		short localSize = mSize;
 		
 		/* [!]
 		 * 
@@ -21,9 +21,9 @@ public class GameBoard extends Object {
 		
 		// Initialize the multidimensional array that shall contain the game tiles.
 		tiles = new ArrayList<ArrayList<GameTile>>();
-		for(int i = 0; i < localSize; i++) {
+		for(byte i = 0; i < localSize; i++) {
 			tiles.add(new ArrayList<GameTile>());
-			for(int j = 0; j < localSize; j++) {
+			for(byte j = 0; j < localSize; j++) {
 				tiles.get(i).add(new GameTile(i,j));
 			}
 		}

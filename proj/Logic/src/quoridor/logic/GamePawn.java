@@ -11,7 +11,7 @@ public class GamePawn extends Object {
 		this.tile.setPawn(this);
 	}
 	
-	public void setPositionTile(GameTile mTile) {
+	public void setTile(GameTile mTile) {
 		this.tile = mTile;
 	}
 	

@@ -11,7 +11,7 @@ public class GameTests {
 
 	@Test
 	public void testBoardSize() {
-		GameBoard board = new GameBoard(8);
+		GameBoard board = new GameBoard((short) 8);
 		
 		assertEquals(board.getTiles().size(), 9);	
 		assertEquals(board.getTiles().get(0).size(), 9);
@@ -19,7 +19,7 @@ public class GameTests {
 	
 	@Test
 	public void testBoardLinks() {
-		GameBoard board = new GameBoard(9);
+		GameBoard board = new GameBoard((short) 9);
 		
 		// Test corners
 		assertEquals(board.getTile(0, 0).getNeighbors().size(), 2);
@@ -80,18 +80,13 @@ public class GameTests {
 		GameState logic = new GameState();
 		GameBoard board = logic.getGameBoard();
 		
-		logic.movePawnTo(2, 4);
-		
-		assertFalse(board.getTile(2, 4).isOccupied());
-		assertTrue(board.getTile(0, 4).isOccupied());
+		assertFalse(logic.canMove(2, 4));
 		
 		assertEquals(board.getTile(0,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
 		
 		logic.nextTurn();
-		logic.movePawnTo(4, 3);
 
-		assertFalse(board.getTile(4, 3).isOccupied());
-		assertTrue(board.getTile(8, 4).isOccupied());
+		assertFalse(logic.canMove(4, 3));
 		
 		assertEquals(board.getTile(8,4).getPawn(), logic.getPawns().get(logic.getCurrentPlayerIndex()));
 	}
@@ -117,18 +112,16 @@ public class GameTests {
 		GameState logic = new GameState();
 		GameBoard board = logic.getGameBoard();
 		
+		assertTrue(logic.canSetWall(0, 4, true));
+		
 		logic.setWall(0, 4, true);
 		
 		assertTrue(board.getTile(0, 4).isWalled());
 		assertTrue(board.getTile(0, 4).getWall().isHorizontal());
 		
-		logic.setWall(0, 4, false);
-
-		assertFalse(board.getTile(0, 4).getWall().isVertical());
-		
-		logic.setWall(0, 3, true);
-		
-		assertFalse(board.getTile(0, 3).isWalled());
+		assertFalse(logic.canSetWall(0, 4, false));
+		assertFalse(logic.canSetWall(0, 4, true));
+		assertFalse(logic.canSetWall(0, 3, true));
 	}
 
 }
