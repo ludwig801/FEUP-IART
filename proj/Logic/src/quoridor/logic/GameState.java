@@ -12,7 +12,7 @@ public class GameState {
 	public GameBoard board;
 	public GamePawn[] pawns;
 	
-	public int currentPlayerIndex;
+	public int currentPlayer;
 	
 	public GameState() {
 		board = new GameBoard(boardSize);
@@ -21,12 +21,12 @@ public class GameState {
 		pawns[0] = new GamePawn(0,board.getTile(0, boardSize / 2));
 		pawns[1] = new GamePawn(1,board.getTile(boardSize - 1, boardSize / 2));
 		
-		currentPlayerIndex = 0;
+		currentPlayer = 0;
 	}
 	
 	public GameState(GameState mGame) {
 		board = new GameBoard(boardSize);
-		currentPlayerIndex = mGame.currentPlayerIndex;
+		currentPlayer = mGame.currentPlayer;
 		for(GameTile[] row : mGame.board.tiles) {
 			for(GameTile tile : row) {
 				if(tile.isWalled()) {
@@ -35,9 +35,9 @@ public class GameState {
 			}
 		}
 		pawns = new GamePawn[numPawns];
-		pawns[0] = new GamePawn(0, mGame.pawns[0].tile);
-		pawns[1] = new GamePawn(1, mGame.pawns[1].tile);
-		currentPlayerIndex = mGame.currentPlayerIndex;
+		pawns[0] = new GamePawn(0, board.getTile(mGame.pawns[0].tile.row, mGame.pawns[0].tile.col));
+		pawns[1] = new GamePawn(1, board.getTile(mGame.pawns[1].tile.row, mGame.pawns[1].tile.col));
+		currentPlayer = mGame.currentPlayer;
 	}
 
 	public void movePawnTo(int mRow, int mCol) {
@@ -45,7 +45,7 @@ public class GameState {
 	}
 	
 	private void movePawnTo(GameTile mTile) {
-		GamePawn pawn = pawns[currentPlayerIndex];
+		GamePawn pawn = pawns[currentPlayer];
 		GameTile pawnTile = pawn.tile;
 		
 		pawnTile.removePawn();
@@ -61,7 +61,7 @@ public class GameState {
 		if(!board.isValidPosition(mRow, mCol)) {
 			return false;
 		}
-		GamePawn pawn = pawns[currentPlayerIndex];
+		GamePawn pawn = pawns[currentPlayer];
 		GameTile pawnTile = pawn.tile;
 		return canMove(pawnTile, board.getTile(mRow, mCol));
 	}
@@ -201,17 +201,17 @@ public class GameState {
 			GameTile mTileDown = board.getTile(mTile.row + 1, mTile.col);
 			GameTile mNeighborDown = board.getTile(mNeighbor.row + 1, mNeighbor.col);
 			
-			if(mTileDown.parent == mTile) {
-				mTileDown.parent = null;
-				if(mTile.child == mTileDown) {
-					mTile.child = null;
+			if(mTileDown.parent[currentPlayer] == mTile) {
+				mTileDown.parent[currentPlayer] = null;
+				if(mTile.child[currentPlayer] == mTileDown) {
+					mTile.child[currentPlayer] = null;
 				}
 			}
 			
-			if(mNeighborDown.parent == mNeighbor) {
-				mNeighborDown.parent = null;
-				if(mNeighbor.child == mNeighborDown) {
-					mNeighbor.child = null;
+			if(mNeighborDown.parent[currentPlayer] == mNeighbor) {
+				mNeighborDown.parent[currentPlayer] = null;
+				if(mNeighbor.child[currentPlayer] == mNeighborDown) {
+					mNeighbor.child[currentPlayer] = null;
 				}
 			}
 			
@@ -222,17 +222,17 @@ public class GameState {
 			GameTile mTileRight = board.getTile(mTile.row, mTile.col + 1);
 			GameTile mNeighborRight = board.getTile(mNeighbor.row, mNeighbor.col + 1);
 			
-			if(mTileRight.parent == mTile) {
-				mTileRight.parent = null;
-				if(mTile.child == mTileRight) {
-					mTile.child = null;
+			if(mTileRight.parent[currentPlayer] == mTile) {
+				mTileRight.parent[currentPlayer] = null;
+				if(mTile.child[currentPlayer] == mTileRight) {
+					mTile.child[currentPlayer] = null;
 				}
 			}
 			
-			if(mNeighborRight.parent == mNeighbor) {
-				mNeighborRight.parent = null;
-				if(mNeighbor.child == mNeighborRight) {
-					mNeighbor.child = null;
+			if(mNeighborRight.parent[currentPlayer] == mNeighbor) {
+				mNeighborRight.parent[currentPlayer] = null;
+				if(mNeighbor.child[currentPlayer] == mNeighborRight) {
+					mNeighbor.child[currentPlayer] = null;
 				}
 			}
 			
@@ -255,13 +255,13 @@ public class GameState {
 	}
 
 	public void nextTurn() {
-		currentPlayerIndex++;
-		currentPlayerIndex %= 2;
+		currentPlayer++;
+		currentPlayer %= 2;
 	}
 
 	public void print(PrintStream out) {
 		out.println("===================================");
-		out.println("          Turn: Player " + currentPlayerIndex);
+		out.println("          Turn: Player " + currentPlayer);
 		out.println("===================================");
 		out.println();
 		

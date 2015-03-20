@@ -35,9 +35,9 @@ public class GameTile {
 	
 	// Shortest path to victory
 	// One array position for each player
-	public int value;
-	public GameTile parent;
-	public GameTile child;
+	public int[] value;
+	public GameTile[] parent;
+	public GameTile[] child;
 	
 	public GameTile(int mRow, int mCol) {
 		this.row = mRow;
@@ -46,9 +46,9 @@ public class GameTile {
 		this.neighbors = new ArrayList<GameTile>();
 		this.wall = null;
 		
-		this.value = 0;
-		this.parent = null;
-		this.child = null;
+		this.value = new int[2];	
+		this.parent = new GameTile[2];
+		this.child = new GameTile[2];
 	}
 	
 	public boolean isOccupied() {
