@@ -24,8 +24,14 @@ public class GameStateNode {
 		this.children = new ArrayList<GameStateNode>();
 		
 		// TODO: verify these values
-		alpha = Integer.MIN_VALUE;
-		beta = Integer.MAX_VALUE;
+		if(pParent == null) {
+			alpha = Integer.MIN_VALUE;
+			beta = Integer.MAX_VALUE;
+		} else {
+			alpha = pParent.alpha;
+			beta = pParent.beta;
+		}
+
 		
 		this.maxNode = pMax;
 	}

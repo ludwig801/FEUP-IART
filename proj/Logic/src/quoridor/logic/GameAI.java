@@ -40,10 +40,11 @@ public class GameAI {
 		personalMinimaxAlphaBeta(root, depth);
 		System.out.println("Elapsed: " + TimeUnit.NANOSECONDS.toMillis(timer.getParcial()) + " milliseconds");
 		
-//		System.out.println("====== TREE SIZE =====");
-//		System.out.println(getGameTreeSize(root));
+		//printDepthFirst(root);
+		System.out.println("====== TREE SIZE =====");
+		System.out.println(getGameTreeSize(root));
 	}
-	
+
 	private void createGameTree(GameStateNode node, int depth) {
 		LinkedList<Move> moves = new LinkedList<Move>();
 		createGameTree(moves,node,depth);
@@ -70,7 +71,7 @@ public class GameAI {
 			moves.addLast(tmpMove);
 			val = createGameTree(moves, node.getLastChild(), depth - 1);
 			moves.removeLast();
-			if(val > 0){
+			if(val >= 0){
 				node.removeChild(node.getLastChild());
 				tmpMove = null;
 				return val - 1;
@@ -128,14 +129,19 @@ public class GameAI {
 	private int getHeuristicValue(GameState state) {
 		calcShortestPath(state);
 		
+//		printShortestPath(state);
+		
 		GameTile maxTile = state.pawns[0].tile;
 		GameTile minTile = state.pawns[1].tile;
-
-		return (minTile.value + maxTile.row - minTile.row);
+		
+//		System.out.println("tiles:: " + maxTile.row + ", " + maxTile.col);
+//		System.out.println("value: " + maxTile.value);
+		
+		return (maxTile.value /* + maxTile.row - minTile.row */);
 	}
 
 	private int createGameState(GameStateNode node, GameState state, LinkedList<Move> moves) {
-		int plies = moves.size()-1;
+		int plies = moves.size();
 		for(Move move : moves) {
 			//out.println(move.toString());
 			GameTile pawnTile = state.pawns[state.currentPlayerIndex].tile; 
@@ -188,56 +194,48 @@ public class GameAI {
 	
 	public void personalMinimaxAlphaBeta(GameStateNode node, int depth) {
 		LinkedList<Move> moves = new LinkedList<Move>();
-		personalMinimaxAlphaBeta(moves,node,0,depth);
+		node.alpha = Integer.MIN_VALUE;
+		node.beta = Integer.MAX_VALUE;
+		personalMinimaxAlphaBeta(moves,node,depth);
 	}
 	
-	public int personalMinimaxAlphaBeta(LinkedList<Move> moves, GameStateNode node, int val, int depth) {
-		val = 0;
+	public int personalMinimaxAlphaBeta(LinkedList<Move> moves, GameStateNode node, int depth) {
+		
+		int goBackVal = 0;
 		
 		if(depth == 0) {
 			node.state = new GameState(currentState);
-			val = createGameState(node, node.state, moves);
-			if(val < 0) {
+			goBackVal = createGameState(node, node.state, moves);
+			if(goBackVal <= 0) {
 				// Acceptance
-				node.heuristicValue = this.getHeuristicValue(node.state);
+				node.heuristicValue = getHeuristicValue(node.state);
+				node.state.print(out);
 			}
 			node.state = null;
-			return val;
+			return goBackVal;
 		}
 		
 		Move tmpMove;
-		int minimaxRes;
-		
-		if(node.maxNode) {
-			node.heuristicValue = Integer.MIN_VALUE;
-		} else {
-			node.heuristicValue = Integer.MAX_VALUE;
-		}
-		
+
+		// Initialize minimax and alpha-beta pruning values
+		node.heuristicValue = node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+
 		// Add vertical movements
 		for(int mRow = -1; mRow <= 1; mRow += 2) {
 			
 			tmpMove = new Move(mRow, 0);
-			node.addChild(node, tmpMove, !node.maxNode);
 			moves.addLast(tmpMove);
-			minimaxRes = personalMinimaxAlphaBeta(moves, node.getLastChild(), val, depth - 1);
+			node.addChild(node, tmpMove, !node.maxNode);
+			goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
 			moves.removeLast();
-			if(val > 0){
+			
+			if(goBackVal > 1) { 
 				node.removeChild(node.getLastChild());
-				tmpMove = null;
-				val = val - 1;
-				return (node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE);
-			}
-			if(node.maxNode) {
-				node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-				if(node.beta <= node.alpha) {
-					return node.heuristicValue;
-				}
-			} else {
-				node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-				if(node.beta <= node.alpha) {
-					return node.heuristicValue;
-				}
+				return goBackVal - 1;
+			} else if(goBackVal > 0) { // do not consider this move
+				node.removeChild(node.getLastChild());
+			} else if(alphaBetaCut(node)) {
+				return node.heuristicValue;
 			}
 		}
 		
@@ -245,91 +243,103 @@ public class GameAI {
 		for(int mCol = -1; mCol <= 1; mCol += 2) {
 			
 			tmpMove = new Move(0, mCol);
-			node.addChild(node, tmpMove, !node.maxNode);
 			moves.addLast(tmpMove);
-			minimaxRes = personalMinimaxAlphaBeta(moves, node.getLastChild(), val, depth - 1);
+			node.addChild(node, tmpMove, !node.maxNode);
+			goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
 			moves.removeLast();
 			
-			if(val > 0){
+			if(goBackVal > 1) { 
 				node.removeChild(node.getLastChild());
-				tmpMove = null;
-				val = val - 1;
-				return (node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE);
-			}
-			if(node.maxNode) {
-				node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-				if(node.beta <= node.alpha) {
-					return node.heuristicValue;
-				}
-			} else {
-				node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-				if(node.beta <= node.alpha) {
-					return node.heuristicValue;
-				}
+				return goBackVal - 1;
+			} else if(goBackVal > 0) { // do not consider this move
+				node.removeChild(node.getLastChild());
+				goBackVal = 0;
+			} else if(alphaBetaCut(node)) {
+				return node.heuristicValue;
 			}
 		}
-		
-		// Add horizontal walls
-		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
-			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
-				
-				tmpMove = new Move(mRow,mCol,true);
-				node.addChild(node, tmpMove, !node.maxNode);
-				moves.addLast(tmpMove);
-				minimaxRes = personalMinimaxAlphaBeta(moves, node.getLastChild(), val, depth - 1);
-				moves.removeLast();
-				if(val > 0){
-					node.removeChild(node.getLastChild());
-					tmpMove = null;
-					val = val - 1;
-					return (node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE);
-				}
-				if(node.maxNode) {
-					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-					if(node.beta <= node.alpha) {
-						return node.heuristicValue;
-					}
-				} else {
-					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-					if(node.beta <= node.alpha) {
-						return node.heuristicValue;
-					}
-				}
-			}
-		}
-		
-		// Add vertical walls
-		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
-			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
-
-				tmpMove = new Move(mRow,mCol,false);
-				node.addChild(node, tmpMove, !node.maxNode);
-				moves.addLast(tmpMove);
-				minimaxRes = personalMinimaxAlphaBeta(moves, node.getLastChild(), val, depth - 1);
-				moves.removeLast();
-				if(val > 0){
-					node.removeChild(node.getLastChild());
-					tmpMove = null;
-					val = val - 1;
-					return (node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE);
-				}
-				if(node.maxNode) {
-					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-					if(node.beta <= node.alpha) {
-						return node.heuristicValue;
-					}
-				} else {
-					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
-					if(node.beta <= node.alpha) {
-						return node.heuristicValue;
-					}
-				}
-			}
-		}
+//		
+//		// Add horizontal walls
+//		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
+//			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
+//				
+//				tmpMove = new Move(mRow,mCol,true);
+//				node.addChild(node, tmpMove, !node.maxNode);
+//				moves.addLast(tmpMove);
+//				minimaxRes = personalMinimaxAlphaBeta(moves, node.getLastChild(), val, depth - 1);
+//				moves.removeLast();
+//				if(val > 0){
+//					node.removeChild(node.getLastChild());
+//					tmpMove = null;
+//					val = val - 1;
+//					return (node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE);
+//				}
+//				if(node.maxNode) {
+//					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
+//					if(node.beta <= node.alpha) {
+//						return node.heuristicValue;
+//					}
+//				} else {
+//					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
+//					if(node.beta <= node.alpha) {
+//						return node.heuristicValue;
+//					}
+//				}
+//			}
+//		}
+//		
+//		// Add vertical walls
+//		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
+//			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
+//
+//				tmpMove = new Move(mRow,mCol,false);
+//				node.addChild(node, tmpMove, !node.maxNode);
+//				moves.addLast(tmpMove);
+//				minimaxRes = personalMinimaxAlphaBeta(moves, node.getLastChild(), val, depth - 1);
+//				moves.removeLast();
+//				if(val > 0){
+//					node.removeChild(node.getLastChild());
+//					tmpMove = null;
+//					val = val - 1;
+//					return (node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE);
+//				}
+//				if(node.maxNode) {
+//					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
+//					if(node.beta <= node.alpha) {
+//						return node.heuristicValue;
+//					}
+//				} else {
+//					node.heuristicValue = Math.max(node.heuristicValue, minimaxRes);
+//					if(node.beta <= node.alpha) {
+//						return node.heuristicValue;
+//					}
+//				}
+//			}
+//		}
 		
 		tmpMove = null;
 		
-		return node.heuristicValue;
+		return goBackVal;
+	}
+
+	private boolean alphaBetaCut(GameStateNode node) {
+		int childHeuristic = node.getLastChild().heuristicValue;
+		//node.removeChild(node.getLastChild());
+		
+		if(node.maxNode) {
+			node.heuristicValue = Math.max(node.heuristicValue, childHeuristic);
+			node.alpha = Math.max(node.alpha, node.heuristicValue);
+			if(node.alpha >= node.beta) {
+				return true;
+			}
+		} else {
+			node.heuristicValue = Math.min(node.heuristicValue, childHeuristic);
+			node.beta = Math.min(node.beta,node.heuristicValue);
+			if(node.alpha >= node.beta) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void calcShortestPath(GameState node) {
@@ -338,7 +348,9 @@ public class GameAI {
 				tile.value = Integer.MAX_VALUE;
 			}
 		}
+		
 		int victoryRow = (int)((GameState.boardBorder) % GameState.boardSize);
+		
 		for(int i = 0; i < GameState.boardSize; i++) {
 			GameTile tile = node.board.getTile(victoryRow, i);
 			tile.value = 0;
@@ -347,21 +359,6 @@ public class GameAI {
 	}
 
 	private void calcShortestPath(GameTile tile, int mVal, int victoryRow) {
-		
-//		System.out.println("Node: (" + tile.row + "," + tile.col + ")");
-//		if(tile.parent[player] != null) {
-//			System.out.println("  Parent: (" + tile.parent[player].row + "," + tile.parent[player].col + ")");
-//		}
-		
-//		if(player == 0)
-//			printShortestPath(root, player);
-
-//		if(tile.isOccupied()) {	
-//			// Reached objective tile
-//			if(tile.pawn.owningPlayer == player) {
-//				return;
-//			}
-//		}
 	
 		for(GameTile neighbor : tile.neighbors) {
 			if(!neighbor.equals(tile)) {
@@ -376,11 +373,10 @@ public class GameAI {
 	}
 	
 	private void printDepthFirst(GameStateNode current) {
-//		current.print();
-//		for(GameStateNode child : current.children) {
-//			child.print();
-//			printDepthFirst(child);
-//		}
+		out.println("Heur. Val: " + current.heuristicValue);
+		for(GameStateNode child : current.children) {
+			printDepthFirst(child);
+		}
 	}
 	
 	private void printBreadthFirst(GameStateNode current) {
@@ -391,6 +387,15 @@ public class GameAI {
 //			v.print();
 //			q.addAll(v.children);
 //		}
+	}
+	
+	
+	private int getGameTreeSize(GameStateNode node) {
+		int x = 1;
+		for(GameStateNode child : node.children) {
+			x += getGameTreeSize(child);
+		}
+		return x;
 	}
 	
 	public static void printShortestPath(GameState node) {
