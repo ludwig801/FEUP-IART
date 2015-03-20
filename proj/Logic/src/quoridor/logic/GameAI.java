@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 public class GameAI {
 
-	static int depth = 2;
+	static int depth = 4;
 	
 	PrintStream out;
 	
@@ -48,15 +48,10 @@ public class GameAI {
 	private int getHeuristicValue(GameState state) {
 		calcShortestPath(state);
 		
-//		printShortestPath(state);
-		
 		GameTile maxTile = state.pawns[0].tile;
 		GameTile minTile = state.pawns[1].tile;
 		
-//		System.out.println("tiles:: " + maxTile.row + ", " + maxTile.col);
-//		System.out.println("value: " + maxTile.value);
-		
-		return (maxTile.value[0] - (GameState.boardBorder - minTile.value[1]));
+		return (minTile.value[1] - maxTile.value[0]);
 	}
 	
 	private int createGameState(GameStateNode node, GameState state, LinkedList<Move> moves) {
@@ -101,8 +96,8 @@ public class GameAI {
 			if(goBackVal <= 0) {
 				// Acceptance
 				node.heuristicValue = getHeuristicValue(node.state);
-				node.state.print(out);
-				out.println("H-Val: " + node.heuristicValue);
+				//node.state.print(out);
+				//out.println("H-Val: " + node.heuristicValue);
 			}
 			node.state = null;
 			return goBackVal;
@@ -112,7 +107,7 @@ public class GameAI {
 
 		// Initialize minimax and alpha-beta pruning values
 		node.heuristicValue = node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE;
-
+			
 		// Add vertical movements
 		for(int mRow = -1; mRow <= 1; mRow += 2) {
 			
@@ -132,69 +127,69 @@ public class GameAI {
 			}
 		}
 		
-//		// Add horizontal movements
-//		for(int mCol = -1; mCol <= 1; mCol += 2) {
-//			
-//			tmpMove = new Move(0, mCol);
-//			moves.addLast(tmpMove);
-//			node.addChild(node, tmpMove, !node.maxNode);
-//			goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-//			moves.removeLast();
-//			
-//			if(goBackVal > 1) { 
-//				node.removeChild(node.getLastChild());
-//				return goBackVal - 1;
-//			} else if(goBackVal > 0) { // do not consider this move
-//				node.removeChild(node.getLastChild());
-//				goBackVal = 0;
-//			} else if(alphaBetaCut(node)) {
-//				return node.heuristicValue;
-//			}
-//		}
-//		
-//		// Add horizontal walls
-//		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
-//			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
-//				
-//				tmpMove = new Move(mRow,mCol,true);
-//				moves.addLast(tmpMove);
-//				node.addChild(node, tmpMove, !node.maxNode);
-//				goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-//				moves.removeLast();
-//				
-//				if(goBackVal > 1) { 
-//					node.removeChild(node.getLastChild());
-//					return goBackVal - 1;
-//				} else if(goBackVal > 0) { // do not consider this move
-//					node.removeChild(node.getLastChild());
-//					goBackVal = 0;
-//				} else if(alphaBetaCut(node)) {
-//					return node.heuristicValue;
-//				}
-//			}
-//		}
-//		
-//		// Add vertical walls
-//		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
-//			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
-//				
-//				tmpMove = new Move(mRow,mCol,false);
-//				moves.addLast(tmpMove);
-//				node.addChild(node, tmpMove, !node.maxNode);
-//				goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-//				moves.removeLast();
-//				
-//				if(goBackVal > 1) { 
-//					node.removeChild(node.getLastChild());
-//					return goBackVal - 1;
-//				} else if(goBackVal > 0) { // do not consider this move
-//					node.removeChild(node.getLastChild());
-//					goBackVal = 0;
-//				} else if(alphaBetaCut(node)) {
-//					return node.heuristicValue;
-//				}
-//			}
-//		}
+		// Add horizontal movements
+		for(int mCol = -1; mCol <= 1; mCol += 2) {
+			
+			tmpMove = new Move(0, mCol);
+			moves.addLast(tmpMove);
+			node.addChild(node, tmpMove, !node.maxNode);
+			goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
+			moves.removeLast();
+			
+			if(goBackVal > 1) { 
+				node.removeChild(node.getLastChild());
+				return goBackVal - 1;
+			} else if(goBackVal > 0) { // do not consider this move
+				node.removeChild(node.getLastChild());
+				goBackVal = 0;
+			} else if(alphaBetaCut(node)) {
+				return node.heuristicValue;
+			}
+		}
+		
+		// Add horizontal walls
+		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
+			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
+				
+				tmpMove = new Move(mRow,mCol,true);
+				moves.addLast(tmpMove);
+				node.addChild(node, tmpMove, !node.maxNode);
+				goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
+				moves.removeLast();
+				
+				if(goBackVal > 1) {
+					node.removeChild(node.getLastChild());
+					return goBackVal - 1;
+				} else if(goBackVal > 0) { // do not consider this move
+					node.removeChild(node.getLastChild());
+					goBackVal = 0;
+				} else if(alphaBetaCut(node)) {
+					return node.heuristicValue;
+				}
+			}
+		}
+		
+		// Add vertical walls
+		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
+			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
+				
+				tmpMove = new Move(mRow,mCol,false);
+				moves.addLast(tmpMove);
+				node.addChild(node, tmpMove, !node.maxNode);
+				goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
+				moves.removeLast();
+				
+				if(goBackVal > 1) { 
+					node.removeChild(node.getLastChild());
+					return goBackVal - 1;
+				} else if(goBackVal > 0) { // do not consider this move
+					node.removeChild(node.getLastChild());
+					goBackVal = 0;
+				} else if(alphaBetaCut(node)) {
+					return node.heuristicValue;
+				}
+			}
+		}
 		
 		tmpMove = null;
 		
@@ -229,12 +224,20 @@ public class GameAI {
 			}
 		}
 		
-		int victoryRow = GameState.boardBorder % GameState.boardSize;
+		int victoryRow = GameState.boardBorder;
 		
 		for(int i = 0; i < GameState.boardSize; i++) {
 			GameTile tile = node.board.getTile(victoryRow, i);
 			tile.value[0] = 0;
 			calcShortestPath(tile,tile.value[0],victoryRow,0);
+		}
+		
+		victoryRow = 0;
+		
+		for(int i = 0; i < GameState.boardSize; i++) {
+			GameTile tile = node.board.getTile(victoryRow, i);
+			tile.value[1] = 0;
+			calcShortestPath(tile,tile.value[1],victoryRow,1);
 		}
 	}
 
