@@ -59,20 +59,21 @@ public class GameTests {
 		GameState logic = new GameState();
 		GameBoard board = logic.board;
 		
+		assertTrue(logic.canMove(1, 4));
+		
 		logic.movePawnTo(1, 4);
 		
 		assertFalse(board.getTile(0, 4).isOccupied());
 		assertTrue(board.getTile(1, 4).isOccupied());
 		
-		assertEquals(board.getTile(1,4).pawn, logic.pawns[logic.currentPlayer]);
-		
 		logic.nextTurn();
+		
+		assertFalse(logic.canMove(6, 4));
+		
 		logic.movePawnTo(7, 4);
 
 		assertFalse(board.getTile(8, 4).isOccupied());
 		assertTrue(board.getTile(7, 4).isOccupied());
-		
-		assertEquals(board.getTile(7,4).pawn, logic.pawns[logic.currentPlayer]);
 	}
 	
 	@Test
@@ -82,13 +83,9 @@ public class GameTests {
 		
 		assertFalse(logic.canMove(2, 4));
 		
-		assertEquals(board.getTile(0,4).pawn, logic.pawns[logic.currentPlayer]);
-		
 		logic.nextTurn();
 
 		assertFalse(logic.canMove(4, 3));
-		
-		assertEquals(board.getTile(8,4).pawn, logic.pawns[logic.currentPlayer]);
 	}
 	
 	@Test
