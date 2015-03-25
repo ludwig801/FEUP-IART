@@ -1,6 +1,6 @@
 package quoridor.logic;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 
 public class GameTile {
 
@@ -29,7 +29,7 @@ public class GameTile {
 	 */
 	
 	public int row, col;
-	public ArrayList<GameTile> neighbors;
+	public LinkedList<GameTile> neighbors;
 	public boolean pawn;
 	public GameWall wall;
 	
@@ -43,7 +43,7 @@ public class GameTile {
 		this.row = mRow;
 		this.col = mCol;
 		
-		this.neighbors = new ArrayList<GameTile>();
+		this.neighbors = new LinkedList<GameTile>();
 		this.wall = null;
 		
 		this.value = new int[2];	
@@ -76,7 +76,7 @@ public class GameTile {
 	}
 	
 	public void addNeighbor(GameTile mTile) {
-		this.neighbors.add(mTile);
+		this.neighbors.addLast(mTile);
 	}
 	
 	public void removeNeighbor(GameTile mTile) {

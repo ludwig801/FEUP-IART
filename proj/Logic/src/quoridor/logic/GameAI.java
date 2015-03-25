@@ -13,7 +13,7 @@ public class GameAI {
 	
 	private static GameState currentState;
 	
-	private static GameStateNode root;
+	private static Node root;
 	
 	public static void main(String[] args) {
 		GameState testState = new GameState();
@@ -29,185 +29,96 @@ public class GameAI {
 		}
 		
 		Timer timer = new Timer();
-		
 		timer.start();
-		currentState = mInitialState;
-		root = new GameStateNode(true);
-
-		System.out.println("====== GAME TREE =====");
-		//createGameTree(root, depth);
-		//minimaxAlphaBeta(root, depth);
-		personalMinimaxAlphaBeta(root, depth);
-		System.out.println("Elapsed: " + TimeUnit.NANOSECONDS.toMillis(timer.getParcial()) + " milliseconds");
 		
-		//printDepthFirst(root);
-		System.out.println("====== TREE SIZE =====");
-		System.out.println(getGameTreeSize(root));
+		currentState = mInitialState;
+		
+		System.out.println("======= MINIMAX ======");
+		root = new Node(true);
+		minimaxAlphaBeta(root, depth);
+		
+		System.out.println("Elapsed: " + TimeUnit.NANOSECONDS.toMillis(timer.getParcial()) + " milliseconds");
 	}
 
 	private int getHeuristicValue(GameState state) {
 		calcShortestPath(state);
 		
-		GameTile maxTile = state.pawns[0].tile;
-		GameTile minTile = state.pawns[1].tile;
-		
-		return (minTile.value[1] - maxTile.value[0]);
+		return (state.pawns[1].tile.value[1] - state.pawns[0].tile.value[0]);
 	}
 	
-	private int createGameState(GameStateNode node, GameState state, LinkedList<Move> moves) {
-		int plies = moves.size();
+	private void minimaxAlphaBeta(Node node, int depth) {
+		minimaxAlphaBeta(currentState,node,depth);
+	}
+	
+	private void minimaxAlphaBeta(GameState state, Node node, int depth) {
+
+		if(depth == 0) { // leaf node
+			node.heuristicValue = this.getHeuristicValue(state);
+			//out.println("Heuristic value: " + node.heuristicValue);
+			//state.print(out);
+			return;
+		}
+		
+		Node child = new Node(!node.maximizerNode);
+		
+		LinkedList<Move> moves = getPossibleMoves(state);
+		
 		for(Move move : moves) {
-			//out.println(move.toString());
-			GameTile pawnTile = state.pawns[state.currentPlayer].tile; 
-			if(move.type == Move.MOVE_PAWN) {
-				if(state.canMove(pawnTile.row + move.row, pawnTile.col + move.col)) {
-					state.movePawnTo(pawnTile.row + move.row, pawnTile.col + move.col);
-				} else {
-					break;
-				}
-			} else if(move.type == Move.SET_WALL) {
-				if(state.canSetWall(move.row, move.col, move.horizontal)) {
-					state.setWall(move.row, move.col, move.horizontal);
-				} else {
-					break;
-				}
-			}
+			state.playMove(move);
 			state.nextTurn();
-			plies--;
+			
+			child.alpha = node.alpha;
+			child.beta = node.beta;
+			
+			minimaxAlphaBeta(state, child, depth - 1);
+			
+			state.nextTurn();
+			state.undoMove();
+			
+			if(alphaBetaCut(node, child)) {
+				break;
+			}
 		}
-//		out.println("Plies: " + plies);
-		return plies;
+		
+		moves = null;
+		child = null;
 	}
 	
-	private void personalMinimaxAlphaBeta(GameStateNode node, int depth) {
+	private LinkedList<Move> getPossibleMoves(GameState state) {
 		LinkedList<Move> moves = new LinkedList<Move>();
-		node.alpha = Integer.MIN_VALUE;
-		node.beta = Integer.MAX_VALUE;
-		personalMinimaxAlphaBeta(moves,node,depth);
-	}
-	
-	private int personalMinimaxAlphaBeta(LinkedList<Move> moves, GameStateNode node, int depth) {
 		
-		int goBackVal = 0;
-		
-		if(depth == 0) {
-			node.state = new GameState(currentState);
-			goBackVal = createGameState(node, node.state, moves);
-			if(goBackVal <= 0) {
-				// Acceptance
-				node.heuristicValue = getHeuristicValue(node.state);
-				//node.state.print(out);
-				//out.println("H-Val: " + node.heuristicValue);
-			}
-			node.state = null;
-			return goBackVal;
-		}
-		
-		Move tmpMove;
-
-		// Initialize minimax and alpha-beta pruning values
-		node.heuristicValue = node.maxNode ? Integer.MIN_VALUE : Integer.MAX_VALUE;
-			
-		// Add vertical movements
-		for(int mRow = -1; mRow <= 1; mRow += 2) {
-			
-			tmpMove = new Move(mRow, 0);
-			moves.addLast(tmpMove);
-			node.addChild(node, tmpMove, !node.maxNode);
-			goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-			moves.removeLast();
-			
-			if(goBackVal > 1) { 
-				node.removeChild(node.getLastChild());
-				return goBackVal - 1;
-			} else if(goBackVal > 0) { // do not consider this move
-				node.removeChild(node.getLastChild());
-			} else if(alphaBetaCut(node)) {
-				return node.heuristicValue;
+		// pawn movements
+		for(GameTile tile : state.pawns[state.currentPlayer].tile.neighbors) {
+			if(state.canMove(tile.row, tile.col)) {
+				moves.add(new Move(tile.row, tile.col));				
 			}
 		}
 		
-		// Add horizontal movements
-		for(int mCol = -1; mCol <= 1; mCol += 2) {
-			
-			tmpMove = new Move(0, mCol);
-			moves.addLast(tmpMove);
-			node.addChild(node, tmpMove, !node.maxNode);
-			goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-			moves.removeLast();
-			
-			if(goBackVal > 1) { 
-				node.removeChild(node.getLastChild());
-				return goBackVal - 1;
-			} else if(goBackVal > 0) { // do not consider this move
-				node.removeChild(node.getLastChild());
-				goBackVal = 0;
-			} else if(alphaBetaCut(node)) {
-				return node.heuristicValue;
-			}
-		}
-		
-		// Add horizontal walls
-		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
-			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
-				
-				tmpMove = new Move(mRow,mCol,true);
-				moves.addLast(tmpMove);
-				node.addChild(node, tmpMove, !node.maxNode);
-				goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-				moves.removeLast();
-				
-				if(goBackVal > 1) {
-					node.removeChild(node.getLastChild());
-					return goBackVal - 1;
-				} else if(goBackVal > 0) { // do not consider this move
-					node.removeChild(node.getLastChild());
-					goBackVal = 0;
-				} else if(alphaBetaCut(node)) {
-					return node.heuristicValue;
+		// wall placements
+		for(int row = 0; row < GameState.boardSize; row++) {
+			for(int col = 0; col < GameState.boardSize; col++) {
+				if(state.canSetWall(row, col, true)) {
+					moves.add(new Move(row, col, true));
+				}
+				if(state.canSetWall(row, col, false)) {
+					moves.add(new Move(row, col, false));
 				}
 			}
 		}
 		
-		// Add vertical walls
-		for(int mRow = 0; mRow < GameState.boardSize; mRow++) {
-			for(int mCol = 0; mCol < GameState.boardSize; mCol++) {
-				
-				tmpMove = new Move(mRow,mCol,false);
-				moves.addLast(tmpMove);
-				node.addChild(node, tmpMove, !node.maxNode);
-				goBackVal = personalMinimaxAlphaBeta(moves, node.getLastChild(), depth - 1);
-				moves.removeLast();
-				
-				if(goBackVal > 1) { 
-					node.removeChild(node.getLastChild());
-					return goBackVal - 1;
-				} else if(goBackVal > 0) { // do not consider this move
-					node.removeChild(node.getLastChild());
-					goBackVal = 0;
-				} else if(alphaBetaCut(node)) {
-					return node.heuristicValue;
-				}
-			}
-		}
-		
-		tmpMove = null;
-		
-		return goBackVal;
+		return moves;
 	}
 
-	private boolean alphaBetaCut(GameStateNode node) {
-		int childHeuristic = node.getLastChild().heuristicValue;
-		//node.removeChild(node.getLastChild());
+	private boolean alphaBetaCut(Node node, Node child) {
 		
-		if(node.maxNode) {
-			node.heuristicValue = Math.max(node.heuristicValue, childHeuristic);
+		if(node.maximizerNode) {
+			node.heuristicValue = Math.max(node.heuristicValue, child.heuristicValue);
 			node.alpha = Math.max(node.alpha, node.heuristicValue);
 			if(node.alpha >= node.beta) {
 				return true;
 			}
 		} else {
-			node.heuristicValue = Math.min(node.heuristicValue, childHeuristic);
+			node.heuristicValue = Math.min(node.heuristicValue, child.heuristicValue);
 			node.beta = Math.min(node.beta,node.heuristicValue);
 			if(node.alpha >= node.beta) {
 				return true;
@@ -253,14 +164,6 @@ public class GameAI {
 				}
 			}
 		}
-	}
-
-	private int getGameTreeSize(GameStateNode node) {
-		int x = 1;
-		for(GameStateNode child : node.children) {
-			x += getGameTreeSize(child);
-		}
-		return x;
 	}
 	
 	public static void printShortestPath(GameState node, int player) {

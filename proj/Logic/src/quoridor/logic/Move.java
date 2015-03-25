@@ -2,8 +2,8 @@ package quoridor.logic;
 
 public class Move {
 	
-	public static int MOVE_PAWN = 0;
-	public static int SET_WALL = 1;
+	public static final int MOVE_PAWN = 0;
+	public static final int SET_WALL = 1;
 	
 	public int type;
 	public int row;
@@ -22,7 +22,7 @@ public class Move {
 		col = pCol;
 		horizontal = pHorizontal;
 	}
-	
+
 	public String toString() {
 		if(type == MOVE_PAWN) {
 			return "Move pawn by (" + row + "," + col + ")";

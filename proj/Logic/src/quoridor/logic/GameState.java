@@ -1,6 +1,7 @@
 package quoridor.logic;
 
 import java.io.PrintStream;
+import java.util.LinkedList;
 
 public class GameState {
 	
@@ -12,6 +13,8 @@ public class GameState {
 	public GameBoard board;
 	public GamePawn[] pawns;
 	
+	public LinkedList<Move> moveHistory;
+	
 	public int currentPlayer;
 	
 	public GameState() {
@@ -22,6 +25,8 @@ public class GameState {
 		pawns[1] = new GamePawn(1,board.getTile(boardSize - 1, boardSize / 2));
 		
 		currentPlayer = 0;
+		
+		moveHistory = new LinkedList<Move>();
 	}
 	
 	public GameState(GameState mGame) {
@@ -38,6 +43,8 @@ public class GameState {
 		pawns[0] = new GamePawn(0, board.getTile(mGame.pawns[0].tile.row, mGame.pawns[0].tile.col));
 		pawns[1] = new GamePawn(1, board.getTile(mGame.pawns[1].tile.row, mGame.pawns[1].tile.col));
 		currentPlayer = mGame.currentPlayer;
+		
+		moveHistory = new LinkedList<Move>();
 	}
 
 	public void movePawnTo(int mRow, int mCol) {
@@ -242,6 +249,30 @@ public class GameState {
 		mTile.setWall(new GameWall(mHorizontal));
 	}
 
+	public void unsetWall(int mRow, int mCol, boolean mHorizontal) {
+		
+		GameTile mTile = board.getTile(mRow, mCol);
+		GameTile mNeighbor;
+
+		if(mHorizontal) {
+			mNeighbor = board.getTile(mTile.row, mTile.col+1);
+			GameTile mTileDown = board.getTile(mTile.row + 1, mTile.col);
+			GameTile mNeighborDown = board.getTile(mNeighbor.row + 1, mNeighbor.col);
+			
+			board.addLink(mTile, mTileDown);
+			board.addLink(mNeighbor, mNeighborDown);
+		} else {
+			mNeighbor = board.getTile(mTile.row+1, mTile.col);
+			GameTile mTileRight = board.getTile(mTile.row, mTile.col + 1);
+			GameTile mNeighborRight = board.getTile(mNeighbor.row, mNeighbor.col + 1);
+			
+			board.addLink(mTile, mTileRight);
+			board.addLink(mNeighbor, mNeighborRight);
+		}
+		
+		mTile.removeWall();
+	}
+	
 	public boolean checkMoveDistance(GameTile tileFrom, GameTile tileTo) {
 		if(Math.abs(tileTo.row - tileFrom.row) > 1) {
 			return false;
@@ -311,5 +342,43 @@ public class GameState {
 			}
 			out.println();
 		}
+	}
+
+	
+	public void playMove(Move move) {
+		switch(move.type) {
+			case Move.MOVE_PAWN:
+				moveHistory.addLast(new Move(pawns[currentPlayer].tile.row, pawns[currentPlayer].tile.col));
+				movePawnTo(move.row, move.col);
+				break;
+				
+			case Move.SET_WALL:
+				moveHistory.addLast(new Move(move.row,move.col,move.horizontal));
+				setWall(move.row, move.col, move.horizontal);
+				break;
+				
+			default:
+				break;
+		}
+	}
+
+	public void undoMove() {
+		Move last = moveHistory.getLast();
+		
+		switch(last.type) {
+			case Move.MOVE_PAWN:
+				movePawnTo(last.row, last.col);
+				break;
+				
+			case Move.SET_WALL:
+				unsetWall(last.row, last.col, last.horizontal);
+				break;
+				
+			default:
+				break;
+		}
+		
+		last = null;
+		moveHistory.removeLast();
 	}
 }
