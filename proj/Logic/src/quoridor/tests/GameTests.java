@@ -79,7 +79,6 @@ public class GameTests {
 	@Test
 	public void testMovePawnToNonLegalPosition() {
 		GameState logic = new GameState();
-		GameBoard board = logic.board;
 		
 		assertFalse(logic.canMove(2, 4));
 		
