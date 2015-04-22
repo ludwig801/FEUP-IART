@@ -4,20 +4,7 @@ using System.Collections;
 public class Wall : Piece
 {
 	private bool horizontal;
-	private bool tempLinkBreaker;
 	private Transform wallTransform;
-
-	public bool TempLinkBroken
-	{
-		get
-		{
-			return tempLinkBreaker;
-		}
-		set
-		{
-			tempLinkBreaker = value; 
-		}
-	}
 
 	public Tile Tile
 	{
@@ -88,7 +75,6 @@ public class Wall : Piece
 	{
 		visible = false;
 		horizontal = true;
-		tempLinkBreaker = false;
 		rendererComponent = transform.FindChild(Names.Wall).GetComponent<Renderer>();
 		wallTransform = transform.FindChild(Names.Wall).transform;
 	}

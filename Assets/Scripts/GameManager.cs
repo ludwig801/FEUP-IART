@@ -3,7 +3,7 @@ using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
-	private Game game;
+	private Logic game;
 
 	public GameObject wallPrefab;
 	public int minimaxDepth;
@@ -12,7 +12,7 @@ public class GameManager : MonoBehaviour
 	void Start()
 	{
 		CreateWalls();
-		game = new Game(minimaxDepth);
+		game = new Logic(minimaxDepth);
 	}
 
 	public void PlayAutomatic()
@@ -22,11 +22,11 @@ public class GameManager : MonoBehaviour
 
 	void CreateWalls()
 	{
-		for(int i = 0; i < Game.NumPlayers; i++)
+		for(int i = 0; i < Logic.NumPlayers; i++)
 		{
 			Transform walls = GameObject.Find(Names.GamePieces).transform.FindChild(Names.Player_ + i).transform.FindChild(Names.Walls).transform;
 
-			for(int j = 0; j < Game.NumWallsPerPlayer; j++)
+			for(int j = 0; j < Logic.NumWallsPerPlayer; j++)
 			{
 				GameObject wall = Instantiate(wallPrefab, new Vector3(), Quaternion.identity) as GameObject;
 				wall.transform.SetParent(walls);

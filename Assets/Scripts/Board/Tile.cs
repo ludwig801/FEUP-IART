@@ -5,11 +5,15 @@ using System.Collections.Generic;
 public class Tile : MonoBehaviour
 {
 	public List<Tile> neighbors;
-
 	public int row;
 	public int col;
-	private int[] value;
-	private Tile[] child;
+
+    // AStar
+    public int gValue;
+    public int hValue;
+    public int fValue;
+    public Tile parent;
+
 	private Wall wall;
 	private Pawn pawn;
 	private bool mouseOver = false;
@@ -90,10 +94,6 @@ public class Tile : MonoBehaviour
 	public void Init()
 	{
 		neighbors = new List<Tile> ();
-		value = new int[2];
-		value[0] = value[1] = int.MaxValue;
-		child = new Tile[2];
-		child[0] = child[1] = null;
 		pawn = null;
 		rendererMaterial = GetComponent<Renderer>().material;
 		color = rendererMaterial.color;
@@ -145,45 +145,9 @@ public class Tile : MonoBehaviour
 		}
 	}
 
-	public int GetValue(int player)
-	{
-		return value[player];
-	}
-
-	public void SetValue(int player, int value)
-	{
-		this.value[player] = value;
-	}
-
-	public Tile GetChild(int player)
-	{
-		return child[player];
-	}
-
-	public void SetChild(int player, Tile tile)
-	{
-		this.child[player] = tile;
-	}
-
 	public override string ToString()	
 	{
 		return "[" + row + " " + col + "]";
-	}
-
-	// Class Methods
-	public static bool Contiguous(Tile a, Tile b)
-	{
-		return (Distance(a,b) < 2);
-	}
-
-	public static bool SameRow(Tile a, Tile b)
-	{
-		return (a.row == b.row);
-	}
-
-	public static bool SameCol(Tile a, Tile b)
-	{
-		return (a.col == b.col);
 	}
 
 	public bool SamePos(Tile b)
@@ -220,6 +184,22 @@ public class Tile : MonoBehaviour
 	{
 		return neighbors.Contains(b);
 	}
+
+    // Class Methods
+    public static bool Contiguous(Tile a, Tile b)
+    {
+        return (Distance(a, b) < 2);
+    }
+
+    public static bool SameRow(Tile a, Tile b)
+    {
+        return (a.row == b.row);
+    }
+
+    public static bool SameCol(Tile a, Tile b)
+    {
+        return (a.col == b.col);
+    }
 
 	public static float Distance(Tile a, Tile b)
 	{
