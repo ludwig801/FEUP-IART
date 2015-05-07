@@ -50,7 +50,6 @@
      <Compile Include="Assets\Scripts\Board\Link.cs" />
      <Compile Include="Assets\Scripts\Board\Tile.cs" />
      <Compile Include="Assets\Scripts\Counter.cs" />
-     <Compile Include="Assets\Scripts\GameAI\Logic.cs" />
      <Compile Include="Assets\Scripts\GameAI\MinimaxNode.cs" />
      <Compile Include="Assets\Scripts\GameAI\Move.cs" />
      <Compile Include="Assets\Scripts\GameManager.cs" />

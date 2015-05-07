@@ -68,6 +68,47 @@ public class Board : MonoBehaviour
         CalcNeighbors();
     }
 
+    public void Reset()
+    {
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (j < Border)
+                {
+                    RemoveLink(tiles[i, j], tiles[i, j + 1]);
+                }
+                if (i < Border)
+                {
+                    RemoveLink(tiles[i, j], tiles[i + 1, j]);
+                }
+            }
+        }
+
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (j < Border)
+                {
+                    AddLink(tiles[i, j], tiles[i, j + 1]);
+                }
+                if (i < Border)
+                {
+                    AddLink(tiles[i, j], tiles[i + 1, j]);
+                }
+            }
+        }
+
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                tiles[i, j].Reset();
+            }
+        }
+    }
+
     void GenerateBoard()
     {
         if (tileTransform == null || tiles == null)
@@ -105,6 +146,21 @@ public class Board : MonoBehaviour
 
     void CalcNeighbors()
     {
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (j < Border)
+                {
+                    RemoveLink(tiles[i, j], tiles[i, j + 1]);
+                }
+                if (i < Border)
+                {
+                    RemoveLink(tiles[i, j], tiles[i + 1, j]);
+                }
+            }
+        }
+
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
@@ -313,7 +369,7 @@ public class Board : MonoBehaviour
             {
                 if (!a.Equals(b))
                 {
-                    if (CanBeNeighbors(a, b))
+                    if (CanBeTempNeighbors(a, b, tile))
                     {
                         AddLink(a, b);
                     }
@@ -346,7 +402,7 @@ public class Board : MonoBehaviour
         }
     }
 
-    public bool CanBeNeighbors(Tile a, Tile b)
+    public bool CanBeTempNeighbors(Tile a, Tile b, Tile center)
     {
         if (Tile.SameRow(a, b))
         {
@@ -405,15 +461,92 @@ public class Board : MonoBehaviour
             Tile comp = a.Above(b) ? a : b;
             Tile notComp = b.Equals(comp) ? a : b;
 
-            if (comp.HasWall && comp.Wall.Horizontal)
+            if (comp.Leftside(notComp))
             {
-                return false;
+                if (comp.Above(center))
+                {
+                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
+                    {
+                        return false;
+                    }
+                    else if(center.HasWall && center.Wall.Vertical)
+                    {
+                        return false;
+                    }
+                    else if (IsValidPosition(comp.row, comp.col - 1))
+                    {
+                        Tile left = tiles[comp.row, comp.col - 1];
+                        if (left.HasWall && left.Wall.Vertical)
+                        {
+                            return false;
+                        }
+                    }
+                }
+                else if (comp.Leftside(center))
+                {
+                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
+                    {
+                        return false;
+                    }
+                    else if (center.HasWall && center.Wall.Horizontal)
+                    {
+                        return false;
+                    }
+                    else if (IsValidPosition(comp.row + 1, comp.col))
+                    {
+                        Tile above = tiles[comp.row + 1, comp.col];
+                        if (above.HasWall && above.Wall.Vertical)
+                        {
+                            return false;
+                        }
+                    }
+                }
+                else
+                {
+                    return false;
+                }
             }
-
-            if (comp.Rightside(notComp))
+            else // comp rightside to notComp
             {
-                Tile temp = tiles[comp.row, comp.col - 1];
-                if (temp.HasWall && temp.Wall.Horizontal)
+                if (comp.Above(center))
+                {
+                    if (comp.HasWall && comp.Wall.Horizontal)
+                    {
+                        return false;
+                    }
+                    else if (notComp.HasWall && notComp.Wall.Vertical)
+                    {
+                        return false;
+                    }
+                    else if (IsValidPosition(comp.row, comp.col - 1))
+                    {
+                        Tile left = tiles[comp.row, comp.col - 1];
+                        if (left.HasWall && (left.Wall.Vertical || left.Wall.Horizontal))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                else if (comp.Rightside(center))
+                {
+                    if (notComp.HasWall && notComp.Wall.Vertical)
+                    {
+                        return false;
+                    }
+                    else if (center.HasWall && (center.Wall.Horizontal || center.Wall.Vertical))
+                    {
+                        return false;
+                    }
+                    else if (IsValidPosition(comp.row, comp.col - 2))
+                    {
+                        Tile left = tiles[comp.row, comp.col - 2];
+                        if (left.HasWall && left.Wall.Horizontal)
+                        {
+                            return false;
+                        }
+                    }
+                }
+                else
                 {
                     return false;
                 }

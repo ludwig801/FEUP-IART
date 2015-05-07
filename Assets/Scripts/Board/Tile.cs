@@ -94,10 +94,20 @@ public class Tile : MonoBehaviour
 	public void Init()
 	{
 		neighbors = new List<Tile> ();
-		pawn = null;
 		rendererMaterial = GetComponent<Renderer>().material;
 		color = rendererMaterial.color;
+        Reset();
 	}
+
+    public void Reset()
+    {
+        wall = null;
+        pawn = null;
+        parent = null;
+        gValue = 0;
+        hValue = 0;
+        fValue = 0;
+    }
 
 	void OnMouseEnter()
 	{
