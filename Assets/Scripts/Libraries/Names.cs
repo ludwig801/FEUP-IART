@@ -9,10 +9,11 @@ public class Names : MonoBehaviour
 	public const string Tiles = "Tiles";
 	public const string GameManager = "GameManager";
 	public const string GamePieces = "GamePieces";
-	public const string Pawn = "Pawn";
+	public const string Pawn_ = "Pawn_";
 	public const string Players = "Players";
 	public const string Player_ = "Player ";
 	public const string Walls = "Walls";
-	public const string Wall = "Wall";
+	public const string Wall_ = "Wall_";
 	public const string Links = "Links";
+    public const string SavePath_ = "Statistics/Save_";
 }

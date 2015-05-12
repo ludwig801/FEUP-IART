@@ -6,6 +6,7 @@ public class MinimaxNode
     public bool isMaximizer;
     public float alpha, beta;
     public float heuristicValue;
+    public Move move;
 
     public MinimaxNode(bool isMaximizer)
     {

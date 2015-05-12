@@ -1,51 +1,45 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 public class GameManager : MonoBehaviour
 {
     public const int NumPlayers = 2;
-    public const int NumWallsPerPlayer = 20;
     public const int BoardSize = 9;
     public const int BoardBorder = BoardSize - 1;
     public const int NumEvalFeatures = 4;
 
-    public Pawn[] pawns;
-    public Wall[,] walls;
-    public Board board;
+    public Transform wallPrefab;
+    public Transform boardPrefab;
+    public Transform pawnPrefab;
 
-    public GameObject wallPrefab;
-
-    public enum ReturnValue
+    public enum GameState
     {
-        ErrorPlay = -2,
-        ErrorUndo = -1,
-        GameOver = 0,
-        GameDraw = 1,
-        Success = 2
+        Error = -1,
+        Over = 0,
+        Draw = 1,
+        Ongoing = 2,
+        Stopped = 3
     }
 
+    public GameState gameState;
+
+    public int numWallsPerPlayer;
     public int minimaxDepth;
     public int numGamesPerPlayer;
     public int maxPlies;
     int currentPlayer;
-    int[] wallCount;
     Move bestMove;
     Stack<Move> moveHistory;
-    Stopwatch stopwatch;
-    Counter cuts;
-    Counter plies;
-    Counter totalTime;
-    Counter[] wins;
-    Counter[] losses;
-    Counter draws;
-    Counter numGames;
+    Pawn[] pawns;
+    Wall[,] walls;
+    Board board;
+    Counter plieCounter;
 
     // >> Heuristics <<
     // 
     // > Features
-    //    > F1 : Max's distance to goal (measured in rows to final row)  
+    //    > F1 : Max's distance to goal
     //    > F2 : Difference between F1(Max) and F1(Min)
     //    > F3 : Max's minimum moves to next column (closer to Min's border)
     //    > F4 : Min's minimum moves to next column (closer to Max's border) 
@@ -53,179 +47,126 @@ public class GameManager : MonoBehaviour
     // > Evalutation Function
     //      H(S) = W(Fi)*Fi(S) + Random;
     //
-    // W(Fi)
-    //
-    // | F1 | x |
-    // | F2 | x |
-    // | F3 | x |
-    // | F4 | x |
-    int[] distanceToGoal;
+    float F1, F2, F3, F4;
+    Tile currentTile;
     int[] distanceToNextRow;
+    int[] distanceToGoal;
     float[,] weight;
-    int winner = -1;
 
-    public bool runBattery = false;
-
-    bool gameInProgress = false;
-    int gameCount = 0;
+    public int winner = -1;
 
     // Methods
     void Start()
     {
+        CreateBoard();
+        CreatePawns();
         CreateWalls();
-        Init();
-        Tests();
+        CreateGameVars();
     }
-
-    void Tests()
-    {
-        Reset(0);
-        PlayMove(new Move(7, 4), 0);
-        PlayMove(new Move(7, 0, true), 0);
-        PlayMove(new Move(7, 3, true), 1);
-        PlayMove(new Move(8, 1, true), 0);
-        PlayMove(new Move(8, 3, true), 1);
-        PlayMove(new Move(7, 4, false), 0);
-        PlayMove(new Move(7, 2), 1);
-    }
-
+    
     void Update()
     {
-        if (runBattery)
+        if (gameState == GameState.Ongoing)
         {
-            UpdateGameInProgress();
-        }
-    }
-
-    void UpdateGameInProgress()
-    {
-        if (gameInProgress)
-        {
-            stopwatch.Reset();
-            stopwatch.Start();
-
-            ReturnValue retVal = MoveAI();
-            currentPlayer = GetNextPlayer(currentPlayer);
-
-            totalTime.Add(stopwatch.ElapsedMilliseconds);
-            stopwatch.Stop();
+            GameState retVal = PlayAIMove();
 
             switch (retVal)
             {
-                case ReturnValue.ErrorPlay:
-                    UnityEngine.Debug.Log("ERROR OCURRED!");
-                    gameInProgress = false;
+                case GameState.Error:
+                    gameState = GameState.Error;
                     break;
-                case ReturnValue.ErrorUndo:
-                    UnityEngine.Debug.Log("ERROR OCURRED!");
-                    gameInProgress = false;
+                case GameState.Over:
+                    gameState = GameState.Over;
                     break;
-                case ReturnValue.GameOver:
-                    numGames.Inc();
-                    wins[winner].Inc();
-                    losses[GetNextPlayer(winner)].Inc();
-                    gameInProgress = false;
-                    break;
-                case ReturnValue.Success:
-                    plies.Inc();
-                    if (plies.Value >= this.maxPlies)
+                case GameState.Ongoing:
+                    plieCounter.Inc();
+                    if (plieCounter.Value >= this.maxPlies)
                     {
-                        retVal = ReturnValue.GameDraw;
-                        draws.Inc();
-                        UnityEngine.Debug.Log("Draw. No accountability will be proccessed.");
-                        gameInProgress = false;
+                        gameState = GameState.Over;
+                    }
+                    else
+                    {
+                        gameState = GameState.Ongoing;
                     }
                     break;
-                case ReturnValue.GameDraw:
-                    draws.Inc();
-                    UnityEngine.Debug.Log("Draw. No accountability will be proccessed.");
-                    gameInProgress = false;
+                case GameState.Draw:
+                    gameState = GameState.Draw;
                     break;
                 default:
-                    UnityEngine.Debug.Log("Unknown return value from AI move.");
+                    gameState = GameState.Error;
                     break;
             }
-        }
-        else if (gameCount < numGamesPerPlayer * NumPlayers)
-        {
-            if (gameCount < numGamesPerPlayer)
-            {
-                Reset(0);
-                gameInProgress = true;
-            }
-            else
-            {
-                Reset(1);
-                gameInProgress = true;
-            }
-            gameCount++;
-        }
-        else
-        {
-            runBattery = false;
         }
     }
 
-    // Methods
-    public void Init()
+    void CreateBoard()
     {
-        board = GameObject.Find(Names.Board).GetComponent<Board>();
+        Transform instance = Instantiate(boardPrefab, new Vector3(0, 0, 0), Quaternion.identity) as Transform;
+        instance.name = Names.Board;
+        board = instance.GetComponent<Board>();
         board.Init();
+    }
 
-        walls = new Wall[NumPlayers, NumWallsPerPlayer];
+    void CreatePawns()
+    {
         pawns = new Pawn[NumPlayers];
+
         for (int i = 0; i < NumPlayers; i++)
         {
-            for (int j = 0; j < NumWallsPerPlayer; j++)
-            {
-                walls[i, j] = GameObject.Find(Names.GamePieces).transform.FindChild(Names.Player_ + i).transform.FindChild(Names.Walls).transform.GetChild(j).GetComponent<Wall>();
-                walls[i, j].Init();
-            }
-            pawns[i] = GameObject.Find(Names.GamePieces).transform.FindChild(Names.Player_ + i).transform.FindChild(Names.Pawn).GetComponent<Pawn>();
+            Transform instance = Instantiate(pawnPrefab, new Vector3(0, 0, 0), Quaternion.identity) as Transform;
+            instance.name = Names.Pawn_ + i;
+            instance.parent = GameObject.Find(Names.GamePieces).transform.FindChild(Names.Player_ + i);
+            pawns[i] = instance.GetComponent<Pawn>();
+            pawns[i].player = i;
         }
+    }
 
-        distanceToGoal = new int[NumPlayers];
+    void CreateWalls()
+    {
+        walls = new Wall[NumPlayers, numWallsPerPlayer];
+
+        for (int i = 0; i < NumPlayers; i++)
+        {
+            Transform parent = GameObject.Find(Names.GamePieces).transform.FindChild(Names.Player_ + i).transform.FindChild(Names.Walls).transform;
+
+            for (int j = 0; j < numWallsPerPlayer; j++)
+            {
+                Transform instance = Instantiate(wallPrefab, new Vector3(0, 0, 0), Quaternion.identity) as Transform;
+                instance.parent = parent;
+                instance.name = Names.Wall_ + j;
+                walls[i, j] = instance.GetComponent<Wall>();
+                walls[i, j].Init();
+                walls[i, j].player = i;
+            }
+        }
+    }
+
+    void CreateGameVars()
+    {
         distanceToNextRow = new int[NumPlayers];
+        distanceToGoal = new int[NumPlayers];
         weight = new float[NumEvalFeatures, NumPlayers];
         moveHistory = new Stack<Move>();
 
-        stopwatch = new Stopwatch();
-        cuts = new Counter();
-        plies = new Counter();
-        totalTime = new Counter();
-        numGames = new Counter();
-        wins = new Counter[NumPlayers];
-        wins[0] = new Counter();
-        wins[1] = new Counter();
-        losses = new Counter[NumPlayers];
-        losses[0] = new Counter();
-        losses[1] = new Counter();
-        draws = new Counter();
+        plieCounter = new Counter();
 
-        // Heuristics
-        SetEvaluationFeaturesWeights();
+        NewGame(0);
 
-        // Statistics
-        wins[0].Reset();
-        wins[1].Reset();
-        losses[0].Reset();
-        losses[1].Reset();
-        draws.Reset();
-        Reset();
-
-        gameInProgress = false;
-        gameCount = 0;
+        gameState = GameState.Stopped;
     }
 
-    public void Reset(int initialPlayer = 0)
+    public void Reset()
+    {
+        gameState = GameState.Stopped;
+    }
+
+    public void NewGame(int initialPlayer)
     {
         board.Reset();
 
-        SetEvaluationFeaturesWeights();
-
         for (int i = 0; i < NumPlayers; i++)
         {
-            for (int j = 0; j < NumWallsPerPlayer; j++)
+            for (int j = 0; j < numWallsPerPlayer; j++)
             {
                 walls[i, j].Tile = null;
             }
@@ -239,98 +180,107 @@ public class GameManager : MonoBehaviour
         currentPlayer = initialPlayer;
 
         board.SetTempLinks(pawns[GetNextPlayer(initialPlayer)].Tile);
-        stopwatch.Stop();
-        stopwatch.Reset();
-        cuts.Reset();
-        plies.Reset();
-        totalTime.Reset();
+
+        gameState = GameState.Ongoing;
     }
 
-    public ReturnValue MoveAI()
+    public GameState PlayAIMove()
     {
         moveHistory.Clear();
         bestMove = null;
 
         MinimaxNode root = new MinimaxNode(true);
-        ReturnValue retVal = MinimaxAlphaBeta(root, minimaxDepth, currentPlayer);
+        currentTile = pawns[currentPlayer].Tile;
+        GameState retVal = MinimaxAlphaBeta(root, minimaxDepth, currentPlayer);
 
         switch (retVal)
         {
-            case ReturnValue.ErrorPlay:
-                UnityEngine.Debug.Log("Error trying to play a move.");
+            case GameState.Error:
                 break;
-            case ReturnValue.ErrorUndo:
-                UnityEngine.Debug.Log("Error trying to undo a move.");
+            case GameState.Over:
                 break;
-            case ReturnValue.GameOver:
-                UnityEngine.Debug.Log("GameOver. Winner: Player " + winner);
-                break;
-            case ReturnValue.Success:
+            case GameState.Ongoing:
                 if (bestMove == null)
                 {
-                    retVal = ReturnValue.ErrorPlay;
+                    retVal = GameState.Error;
                 }
                 else
                 {
-                    UnityEngine.Debug.Log("Player: " + currentPlayer + " : " + bestMove.ToString() + "  [" + root.heuristicValue + "]");
                     PlayMove(bestMove, currentPlayer);
-                    moveHistory.Pop();
                 }
                 break;
             default:
-                UnityEngine.Debug.Log("Unknown return value from Minimax Algorithm");
+                retVal = GameState.Error;
                 break;
         }
 
+        currentPlayer = GetNextPlayer(currentPlayer);
         return retVal;
+    }
+
+    public void PlayAIMove(Move move, int player)
+    {
+        PlayMove(move, player);
+        float val = CalcHeuristicValue(currentPlayer);
+        Debug.Log("Player: " + currentPlayer + " : " + moveHistory.Peek().ToString() + "  [" + F1 + ", " + F2 + ", " + F3 + ", " + F4 + "; " + val + "]");
+        moveHistory.Pop();
+    }
+    
+    public void UndoAIMove()
+    {
+        currentPlayer = GetPreviousPlayer(currentPlayer);
+
+        UndoMove(moveHistory.Peek(), currentPlayer);
     }
 
     #region Minimax
 
-    ReturnValue MinimaxAlphaBeta(MinimaxNode node, int depth, int player)
+    GameState MinimaxAlphaBeta(MinimaxNode node, int depth, int player)
     {
         if (FinalState(currentPlayer))
         {
             winner = currentPlayer;
-            return ReturnValue.GameOver;
+            return GameState.Over;
         }
 
         if (0 == depth)
         {
-            node.heuristicValue = CalcHeuristicValue(player);
-            return ReturnValue.Success;
+            node.heuristicValue = CalcHeuristicValue(currentPlayer);
+            return GameState.Ongoing;
         }
 
         // Assign Moves
         List<Move> moves = GetPossibleMoves(player);
+        MinimaxNode child;
 
         // Evaluate Moves
         for (int i = 0; i < moves.Count; i++)
         {
             Move move = moves[i];
 
-            MinimaxNode child = new MinimaxNode(!node.isMaximizer);
+            child = new MinimaxNode(!node.isMaximizer);
 
             if (!PlayMove(move, player))
             {
-                return ReturnValue.ErrorPlay;
+                return GameState.Error;
             }
 
             if (ValidBoard())
             {
                 child.alpha = node.alpha;
                 child.beta = node.beta;
+                child.move = move;
 
-                ReturnValue retVal = MinimaxAlphaBeta(child, depth - 1, GetNextPlayer(player));
+                GameState retVal = MinimaxAlphaBeta(child, depth - 1, GetNextPlayer(player));
 
-                if (retVal != ReturnValue.Success)
+                if (retVal != GameState.Ongoing)
                 {
                     return retVal;
                 }
 
                 if (node.isMaximizer)
                 {
-                    if (depth == minimaxDepth && child.heuristicValue > node.heuristicValue)
+                    if ((depth == minimaxDepth) && (child.heuristicValue > node.heuristicValue))
                     {
                         bestMove = move;
                     }
@@ -341,23 +291,25 @@ public class GameManager : MonoBehaviour
                     node.heuristicValue = Mathf.Min(node.heuristicValue, child.heuristicValue);
                 }
             }
+            else
+            {
+                //Debug.Log("Invalid Board!");
+            }
 
             if (!UndoMove(moveHistory.Pop(), player))
             {
-                return ReturnValue.ErrorUndo;
+                return GameState.Error;
             }
 
             if (AlphaBetaCut(node, child))
             {
-                child = null;
                 break;
             }
-
-            child = null;
         }
 
+        child = null;
         moves = null;
-        return ReturnValue.Success;
+        return GameState.Ongoing;
     }
 
     bool FinalState(int player)
@@ -425,26 +377,29 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // horizontal wall placements
-        for (int i = 0; i < board.Size; i++)
+        if (GetWall(player) != null)
         {
-            for (int j = 0; j < board.Size; j++)
+            // horizontal wall placements
+            for (int i = 0; i < board.Size; i++)
             {
-                if (CanPlaceWall(board.GetTileAt(i, j), true))
+                for (int j = 0; j < board.Size; j++)
                 {
-                    moves.Add(new Move(i, j, true));
+                    if (CanPlaceWall(player, board.GetTileAt(i, j), true))
+                    {
+                        moves.Add(new Move(i, j, true));
+                    }
                 }
             }
-        }
 
-        // vertical wall placements
-        for (int i = 0; i < board.Size; i++)
-        {
-            for (int j = 0; j < board.Size; j++)
+            // vertical wall placements
+            for (int i = 0; i < board.Size; i++)
             {
-                if (CanPlaceWall(board.GetTileAt(i, j), false))
+                for (int j = 0; j < board.Size; j++)
                 {
-                    moves.Add(new Move(i, j, false));
+                    if (CanPlaceWall(player, board.GetTileAt(i, j), false))
+                    {
+                        moves.Add(new Move(i, j, false));
+                    }
                 }
             }
         }
@@ -452,61 +407,183 @@ public class GameManager : MonoBehaviour
         return moves;
     }
 
-    #endregion
-
-    #region Heuristics
-
     float CalcHeuristicValue(int player)
     {
-        // F1 & F2
-        CalcDistanceToGoal();
-
         // F3 & F4
         AStarDistanceToNextRow();
 
         int nextPlayer = GetNextPlayer(player);
 
-        float F1 = weight[0, player] * ((8f - distanceToGoal[player]) / 8f); // [0-1] ~normalized
-        float F2 = weight[1, player] * ((distanceToGoal[nextPlayer] - distanceToGoal[player]) / 8f); // [0-1] ~normalized
-        float F3 = weight[2, player] * ((10f - distanceToNextRow[player]) / 10f); // [0-1] ~normalized
-        float F4 = weight[3, player] * ((distanceToNextRow[nextPlayer] - 10f) / 10f); // [0-1] ~normalized
+        float w1 = weight[0, player];
+        float w2 = weight[1, player];
+        float w3 = weight[2, player];
+        float w4 = weight[3, player];
 
-        return F1 + F2 + F3 + F4 /*+ Random.Range(0f, 0.5f)*/;
-    }
+        F1 = w1 * ((81f - distanceToGoal[player]) / 81f);
+        F2 = w2 * ((distanceToGoal[nextPlayer] - 81f) / 81f);
+        F3 = w3 * ((9f - distanceToNextRow[player]) / 9f);
+        F4 = w4 * ((distanceToNextRow[nextPlayer] - 9f) / 9f);
 
-    void CalcDistanceToGoal()
-    {
-        distanceToGoal[0] = board.Border - pawns[0].Tile.row;
-        distanceToGoal[1] = pawns[1].Tile.row;
-    }
-
-    void SetEvaluationFeaturesWeights()
-    {
-        // Must study weights
-        //weight[0, 0] = Random.Range(0f, 2f);
-        //weight[1, 0] = Random.Range(0f, 2f);
-        //weight[2, 0] = Random.Range(0f, 2f);
-        //weight[3, 0] = Random.Range(0f, 2f);
-
-        //weight[0, 1] = Random.Range(0f, 2f);
-        //weight[1, 1] = Random.Range(0f, 2f);
-        //weight[2, 1] = Random.Range(0f, 2f);
-        //weight[3, 1] = Random.Range(0f, 2f);
-
-        weight[0, 0] = 1f;
-        weight[1, 0] = 1f;
-        weight[2, 0] = 2f;
-        weight[3, 0] = 1f;
-
-        weight[0, 1] = 1f;
-        weight[1, 1] = 1f;
-        weight[2, 1] = 1f;
-        weight[3, 1] = 1f;
+        return (F1 + F2 + F3 + F4) * Random.Range(0.99f,1.01f);
     }
     #endregion
 
-    #region Misc
+    #region AStar
 
+    bool AStarDistanceToNextRow()
+    {
+        int player = 0;
+        int objective = currentTile.row + 1;
+        int[] retVal = new int[NumPlayers];
+
+        retVal[player] = AStar(player, objective, true);
+        if (retVal[player] < 0)
+        {
+            return false;
+        }
+
+        player = 1;
+        objective = currentTile.row - 1;
+        retVal[player] = AStar(player, objective, true);
+        if (retVal[player] < 0)
+        {
+            return false;
+        }
+
+        distanceToNextRow[0] = retVal[0];
+        distanceToNextRow[1] = retVal[1];
+
+        return false;
+    }
+
+    bool AStarDistanceToGoal()
+    {
+        int player = 0;
+        int objective = board.Border;
+        int[] retVal = new int[NumPlayers];
+
+        retVal[player] = AStar(player, objective, false);
+        if (retVal[player] < 0)
+        {
+            return false;
+        }
+
+        player = 1;
+        objective = 0;
+        retVal[player] = AStar(player, objective, false);
+        if (retVal[player] < 0)
+        {
+            return false;
+        }
+
+        distanceToGoal[0] = retVal[0];
+        distanceToGoal[1] = retVal[1];
+
+        return true;
+    }
+
+    int AStar(int player, int objective, bool verifyHasPawn)
+    {
+        List<Tile> openList = new List<Tile>();
+        List<Tile> closedList = new List<Tile>();
+
+        Tile start = pawns[player].Tile;
+        start.gValue = 0;
+        start.hValue = AStarHeuristicValue(start, objective);
+        start.fValue = start.gValue + start.hValue;
+        start.parent = null;
+
+        openList.Add(start);
+
+        Tile current;
+
+        while (openList.Count > 0)
+        {
+            current = AStarBest(openList, closedList);
+
+            if (current == null)
+            {
+                break;
+            }
+
+            // If objective reached
+            if ((player == 0 && current.row >= objective) || (player == 1 && current.row <= objective))
+            {
+                int val = AStarReconstruct(start, current);
+                openList = null;
+                closedList = null;
+                return val;
+            }
+
+            // Remove current from the open list and add it to closed list
+            openList.Remove(current);
+            closedList.Add(current);
+
+            // Add current's neighbors to the open list
+            for (int i = 0; i < current.neighbors.Count; i++)
+            {
+                Tile temp = current.neighbors[i];
+
+                if (!(closedList.Contains(temp) || (verifyHasPawn && temp.HasPawn)))
+                {
+                    int tempG = current.gValue + 1;
+                    bool inOpenList = openList.Contains(temp);
+
+                    if (!inOpenList || tempG < temp.gValue)
+                    {
+                        temp.parent = current;
+                        temp.gValue = tempG;
+                        temp.hValue = AStarHeuristicValue(temp, objective);
+                        temp.fValue = temp.gValue + temp.hValue;
+                        if (!inOpenList)
+                        {
+                            openList.Add(temp);
+                        }
+                    }
+                }
+            }
+        }
+
+        openList = null;
+        closedList = null;
+        return -1;
+    }
+
+    int AStarReconstruct(Tile start, Tile current)
+    {
+        int val = 0;
+
+        while (current != start)
+        {
+            val++;
+            current = current.parent;
+        }
+
+        return val;
+    }
+
+    Tile AStarBest(List<Tile> openList, List<Tile> closedList)
+    {
+        int best = -1;
+        for (int i = 0; i < openList.Count; i++)
+        {
+            if ((best < 0) || (openList[i].fValue < openList[best].fValue))
+            {
+                best = i;
+            }
+        }
+
+        return openList[best];
+    }
+
+    int AStarHeuristicValue(Tile node, int objective)
+    {
+        return Mathf.Abs(node.row - objective);
+    }
+
+    #endregion
+
+    #region Misc
     bool PlayMove(Move move, int player)
     {
         board.RemoveTempLinks(pawns[GetNextPlayer(player)].Tile);
@@ -562,7 +639,7 @@ public class GameManager : MonoBehaviour
 
     Wall GetWall(int player)
     {
-        for (int j = 0; j < NumWallsPerPlayer; j++)
+        for (int j = 0; j < numWallsPerPlayer; j++)
         {
             Wall wall = walls[player, j];
             if (wall.Free)
@@ -591,7 +668,7 @@ public class GameManager : MonoBehaviour
         return player;
     }
 
-    bool CanPlaceWall(Tile tile, bool horizontal)
+    bool CanPlaceWall(int player, Tile tile, bool horizontal)
     {
         int row = tile.row;
         int col = tile.col;
@@ -633,168 +710,4 @@ public class GameManager : MonoBehaviour
     }
 
     #endregion
-
-    #region AStar
-
-    bool AStarDistanceToNextRow()
-    {
-        int player = 0;
-        int objective = pawns[player].Tile.row + 1;
-        int[] retVal = new int[NumPlayers];
-
-        retVal[player] = AStar(player, objective);
-        if (retVal[player] < 0)
-        {
-            return false;
-        }
-
-        player = 1;
-        objective = pawns[player].Tile.row - 1;
-        if (retVal[player] < 0)
-        {
-            return false;
-        }
-
-        distanceToNextRow[0] = retVal[0];
-        distanceToNextRow[1] = retVal[1];
-
-        return false;
-    }
-
-    bool AStarDistanceToGoal()
-    {
-        int player = 0;
-        int objective = BoardBorder;
-        int[] retVal = new int[NumPlayers];
-
-        retVal[player] = AStar(player, objective);
-        if (retVal[player] < 0)
-        {
-            return false;
-        }
-
-        player = 1;
-        objective = 0;
-        retVal[player] = AStar(player, objective);
-        if (retVal[player] < 0)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    int AStar(int player, int objective)
-    {
-        List<Tile> openList = new List<Tile>();
-        List<Tile> closedList = new List<Tile>();
-
-        Tile start = pawns[player].Tile;
-        start.gValue = 0;
-        start.hValue = AStarHeuristicValue(start, objective);
-        start.fValue = start.gValue + start.hValue;
-        start.parent = null;
-
-        openList.Add(start);
-
-        Tile current;
-
-        while (openList.Count > 0)
-        {
-            current = AStarBest(openList);
-
-            if ((player == 0 && current.row >= objective) || (player == 1 && current.row <= objective))
-            {
-                int val = AStarReconstruct(start, current);
-                openList = null;
-                closedList = null;
-                return val;
-            }
-
-            openList.Remove(current);
-            closedList.Add(current);
-
-            for (int i = 0; i < current.neighbors.Count; i++)
-            {
-                Tile temp = current.neighbors[i];
-                if (closedList.Contains(temp) || temp.HasPawn)
-                {
-                    continue;
-                }
-                else
-                {
-                    int tempG = current.gValue + 1;
-                    bool inOpenList = openList.Contains(temp);
-
-                    if (!inOpenList || tempG < temp.gValue)
-                    {
-                        temp.parent = current;
-                        temp.gValue = tempG;
-                        temp.hValue = AStarHeuristicValue(temp, objective);
-                        temp.fValue = temp.gValue + temp.hValue;
-                        if (!inOpenList)
-                        {
-                            openList.Add(temp);
-                        }
-                    }
-                }
-            }
-        }
-
-        openList = null;
-        closedList = null;
-        return -1;
-    }
-
-    int AStarReconstruct(Tile start, Tile current)
-    {
-        int val = 0;
-
-        while (current != start)
-        {
-            val++;
-            current = current.parent;
-        }
-
-        return val;
-    }
-
-    Tile AStarBest(List<Tile> openList)
-    {
-        int best = -1;
-        for (int i = 0; i < openList.Count; i++)
-        {
-            if (best < 0)
-            {
-                best = i;
-            }
-            else if (openList[i].fValue < openList[best].fValue)
-            {
-                best = i;
-            }
-        }
-
-        return openList[best];
-    }
-
-    int AStarHeuristicValue(Tile node, int objective)
-    {
-        return Mathf.Abs(node.row - objective);
-    }
-
-    #endregion
-
-    void CreateWalls()
-    {
-        for (int i = 0; i < NumPlayers; i++)
-        {
-            Transform walls = GameObject.Find(Names.GamePieces).transform.FindChild(Names.Player_ + i).transform.FindChild(Names.Walls).transform;
-
-            for (int j = 0; j < NumWallsPerPlayer; j++)
-            {
-                GameObject wall = Instantiate(wallPrefab, new Vector3(), Quaternion.identity) as GameObject;
-                wall.transform.SetParent(walls);
-            }
-        }
-    }
 }

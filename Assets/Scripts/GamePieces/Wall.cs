@@ -76,7 +76,7 @@ public class Wall : Piece
     {
         visible = false;
         horizontal = true;
-        rendererComponent = transform.FindChild(Names.Wall).GetComponent<Renderer>();
-        wallTransform = transform.FindChild(Names.Wall).transform;
+        rendererComponent = transform.GetChild(0).GetComponent<Renderer>();
+        wallTransform = transform.GetChild(0);
     }
 }
