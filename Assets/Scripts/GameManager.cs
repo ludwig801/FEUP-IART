@@ -1,7 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 
+[RequireComponent(typeof(UIManager))]
 public class GameManager : MonoBehaviour
 {
     public const int NumPlayers = 2;
@@ -19,20 +21,38 @@ public class GameManager : MonoBehaviour
         Over = 0,
         Draw = 1,
         Ongoing = 2,
-        Stopped = 3
+        Stopped = 3,
+        Paused = 4
     }
 
-    public GameState gameState;
+    public enum Mode
+    {
+        None = 0,
+        MovePawn = 1,
+        PlaceWallH = 2,
+        PlaceWallV = 3
+    }
 
+    public bool CPU_0;
+    public bool CPU_1;
+    public bool testMode;
+    public GameState gameState;
+    public Mode mode;
     public int numWallsPerPlayer;
     public int minimaxDepth;
     public int numGamesPerPlayer;
     public int maxPlies;
-    int currentPlayer;
+    public int currentPlayer;
+    public int winner = -1;
+    public int[] availableWalls;
+    public Tile selectedTile = null;
+
     Move bestMove;
+    Stack<Move> minimaxHistory;
     Stack<Move> moveHistory;
     Pawn[] pawns;
     Wall[,] walls;
+    
     Board board;
     Counter plieCounter;
 
@@ -48,12 +68,11 @@ public class GameManager : MonoBehaviour
     //      H(S) = W(Fi)*Fi(S) + Random;
     //
     float F1, F2, F3, F4;
-    Tile currentTile;
     int[] distanceToNextRow;
     int[] distanceToGoal;
     float[,] weight;
-
-    public int winner = -1;
+    bool wait;
+    float waitingTime;
 
     // Methods
     void Start()
@@ -63,40 +82,55 @@ public class GameManager : MonoBehaviour
         CreateWalls();
         CreateGameVars();
     }
-    
+
     void Update()
     {
         if (gameState == GameState.Ongoing)
         {
-            GameState retVal = PlayAIMove();
-
-            switch (retVal)
+            if (IsCPU(currentPlayer))
             {
-                case GameState.Error:
-                    gameState = GameState.Error;
-                    break;
-                case GameState.Over:
-                    gameState = GameState.Over;
-                    break;
-                case GameState.Ongoing:
-                    plieCounter.Inc();
-                    if (plieCounter.Value >= this.maxPlies)
+                if (wait && waitingTime <= 0.450f)
+                {
+                    waitingTime += Time.deltaTime;
+                }
+                else
+                {
+                    waitingTime = 0;
+                    wait = false;
+                    //Debug.Log("Player " + currentPlayer + " is CPU");
+
+                    int res = PlayAIMove();
+
+                    if (res > 0) // everything went ok
                     {
-                        gameState = GameState.Over;
+                        if (FinalState(currentPlayer))
+                        {
+                            gameState = GameState.Over;
+                            winner = currentPlayer;
+                            PrintGameOver();
+                        }
+                        else
+                        {
+                            plieCounter.Inc();
+                            if (CPU_0 && CPU_1 && (plieCounter.Value >= this.maxPlies))
+                            {
+                                gameState = GameState.Draw;
+                            }
+                            NextTurn();
+                        }
                     }
-                    else
+                    else if (res < 0)
                     {
-                        gameState = GameState.Ongoing;
+                        gameState = GameState.Error;
+                        PrintError();
                     }
-                    break;
-                case GameState.Draw:
-                    gameState = GameState.Draw;
-                    break;
-                default:
-                    gameState = GameState.Error;
-                    break;
+                }
             }
         }
+        //else
+        //{
+        //    Debug.Log("Game Stopped");
+        //}
     }
 
     void CreateBoard()
@@ -146,107 +180,133 @@ public class GameManager : MonoBehaviour
         distanceToNextRow = new int[NumPlayers];
         distanceToGoal = new int[NumPlayers];
         weight = new float[NumEvalFeatures, NumPlayers];
+        //SetWeights();
+        ReadWeights();
         moveHistory = new Stack<Move>();
-
         plieCounter = new Counter();
 
-        NewGame(0);
+        availableWalls = new int[NumPlayers];
 
+        //CPU_0 = true;
+        //CPU_1 = true;
+
+        //NewGame(0);
         gameState = GameState.Stopped;
     }
 
     public void Reset()
     {
         gameState = GameState.Stopped;
+        winner = -1;
     }
 
     public void NewGame(int initialPlayer)
     {
+        gameState = GameState.Stopped;
+        winner = -1;
+
         board.Reset();
 
         for (int i = 0; i < NumPlayers; i++)
         {
             for (int j = 0; j < numWallsPerPlayer; j++)
             {
-                walls[i, j].Tile = null;
+                if (walls[i, j].Tile != null)
+                {
+                    walls[i, j].Tile.RemoveWall();
+                    walls[i, j].Tile = null;
+                }
             }
         }
 
-        if (pawns[0].Tile != null) board.RemoveTempLinks(pawns[0].Tile);
-        if (pawns[1].Tile != null) board.RemoveTempLinks(pawns[1].Tile);
+        if (pawns[0].Tile != null)
+        {
+            board.RemoveTempLinks(pawns[0].Tile);
+            pawns[0].Tile.RemovePawn();
+        }
+        if (pawns[1].Tile != null)
+        {
+            board.RemoveTempLinks(pawns[1].Tile);
+            pawns[1].Tile.RemovePawn();
+        }
         pawns[0].Tile = board.GetTileAt(0, board.Size / 2);
         pawns[1].Tile = board.GetTileAt(board.Border, board.Size / 2);
-
         currentPlayer = initialPlayer;
+        board.SetTempLinks(pawns[GetNextPlayer(currentPlayer)].Tile);
 
-        board.SetTempLinks(pawns[GetNextPlayer(initialPlayer)].Tile);
+        if (selectedTile != null)
+        {
+            OnTileDeselected(selectedTile);
+        }
+        selectedTile = null;
+
+        availableWalls[0] = numWallsPerPlayer;
+        availableWalls[1] = numWallsPerPlayer;
+
+        moveHistory = new Stack<Move>();
 
         gameState = GameState.Ongoing;
+        mode = Mode.None;
     }
 
-    public GameState PlayAIMove()
+    public int PlayAIMove()
     {
-        moveHistory.Clear();
-        bestMove = null;
+        int res = MinimaxAlphaBeta();
 
-        MinimaxNode root = new MinimaxNode(true);
-        currentTile = pawns[currentPlayer].Tile;
-        GameState retVal = MinimaxAlphaBeta(root, minimaxDepth, currentPlayer);
-
-        switch (retVal)
+        if (res >= 0) // Everything went ok (verify bestMove)
         {
-            case GameState.Error:
-                break;
-            case GameState.Over:
-                break;
-            case GameState.Ongoing:
-                if (bestMove == null)
-                {
-                    retVal = GameState.Error;
-                }
-                else
-                {
-                    PlayMove(bestMove, currentPlayer);
-                }
-                break;
-            default:
-                retVal = GameState.Error;
-                break;
+            if (bestMove == null)
+            {
+                return -1;
+            }
+
+            if (!PlayMove(moveHistory, bestMove, currentPlayer))
+            {
+                return -1;
+            }
+        }
+        else if (res < 0) // Error ocurred
+        {
+            return -1;
         }
 
-        currentPlayer = GetNextPlayer(currentPlayer);
-        return retVal;
+        return 1;
     }
 
     public void PlayAIMove(Move move, int player)
     {
-        PlayMove(move, player);
-        float val = CalcHeuristicValue(currentPlayer);
-        Debug.Log("Player: " + currentPlayer + " : " + moveHistory.Peek().ToString() + "  [" + F1 + ", " + F2 + ", " + F3 + ", " + F4 + "; " + val + "]");
-        moveHistory.Pop();
+        PlayMove(moveHistory, move, player);
     }
-    
-    public void UndoAIMove()
-    {
-        currentPlayer = GetPreviousPlayer(currentPlayer);
 
-        UndoMove(moveHistory.Peek(), currentPlayer);
+    public void UndoLastMove()
+    {
+        if (moveHistory != null && moveHistory.Count > 0)
+        {
+            currentPlayer = GetPreviousPlayer(currentPlayer);
+
+            UndoLastMove(moveHistory.Peek(), currentPlayer);
+        }
     }
 
     #region Minimax
 
-    GameState MinimaxAlphaBeta(MinimaxNode node, int depth, int player)
+    int MinimaxAlphaBeta()
     {
-        if (FinalState(currentPlayer))
-        {
-            winner = currentPlayer;
-            return GameState.Over;
-        }
+        bestMove = null;
+        minimaxHistory = new Stack<Move>();
+        MinimaxNode root = new MinimaxNode(true);
 
-        if (0 == depth)
+        int res = MinimaxAlphaBeta(root, minimaxDepth, currentPlayer);
+
+        return res;
+    }
+
+    int MinimaxAlphaBeta(MinimaxNode node, int depth, int player)
+    {
+        if ((0 == depth) || FinalState())
         {
             node.heuristicValue = CalcHeuristicValue(currentPlayer);
-            return GameState.Ongoing;
+            return 1;
         }
 
         // Assign Moves
@@ -260,9 +320,9 @@ public class GameManager : MonoBehaviour
 
             child = new MinimaxNode(!node.isMaximizer);
 
-            if (!PlayMove(move, player))
+            if (!PlayMove(minimaxHistory, move, player))
             {
-                return GameState.Error;
+                continue;
             }
 
             if (ValidBoard())
@@ -271,11 +331,11 @@ public class GameManager : MonoBehaviour
                 child.beta = node.beta;
                 child.move = move;
 
-                GameState retVal = MinimaxAlphaBeta(child, depth - 1, GetNextPlayer(player));
+                int res = MinimaxAlphaBeta(child, depth - 1, GetNextPlayer(player));
 
-                if (retVal != GameState.Ongoing)
+                if (res < 0)
                 {
-                    return retVal;
+                    return -1;
                 }
 
                 if (node.isMaximizer)
@@ -291,14 +351,10 @@ public class GameManager : MonoBehaviour
                     node.heuristicValue = Mathf.Min(node.heuristicValue, child.heuristicValue);
                 }
             }
-            else
-            {
-                //Debug.Log("Invalid Board!");
-            }
 
-            if (!UndoMove(moveHistory.Pop(), player))
+            if (!UndoLastMove(minimaxHistory.Pop(), player))
             {
-                return GameState.Error;
+                return -1;
             }
 
             if (AlphaBetaCut(node, child))
@@ -307,9 +363,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        child = null;
-        moves = null;
-        return GameState.Ongoing;
+        return 1;
     }
 
     bool FinalState(int player)
@@ -334,6 +388,11 @@ public class GameManager : MonoBehaviour
         return false;
     }
 
+    bool FinalState()
+    {
+        return (pawns[0].Tile.row == BoardBorder || pawns[1].Tile.row == 0);
+    }
+
     public bool ValidBoard()
     {
         return AStarDistanceToGoal();
@@ -348,7 +407,6 @@ public class GameManager : MonoBehaviour
             {
                 return true;
             }
-
         }
         else
         {
@@ -357,7 +415,6 @@ public class GameManager : MonoBehaviour
             {
                 return true;
             }
-
         }
 
         return false;
@@ -418,13 +475,18 @@ public class GameManager : MonoBehaviour
         float w2 = weight[1, player];
         float w3 = weight[2, player];
         float w4 = weight[3, player];
+        int row = getRowAbs(nextPlayer);
 
-        F1 = w1 * ((81f - distanceToGoal[player]) / 81f);
-        F2 = w2 * ((distanceToGoal[nextPlayer] - 81f) / 81f);
-        F3 = w3 * ((9f - distanceToNextRow[player]) / 9f);
-        F4 = w4 * ((distanceToNextRow[nextPlayer] - 9f) / 9f);
+        //F1 = w1 * ((81f - distanceToGoal[player]) / 81f);
+        //F2 = w2 * ((distanceToGoal[nextPlayer] - 81f) / 81f);
+        //F3 = w3 * ((9f - distanceToNextRow[player]) / 9f);
+        //F4 = w4 * ((distanceToNextRow[nextPlayer] - 9f) / 9f);
+        F1 = w1 * (0.012f) * (80 - distanceToGoal[player]);
+        F2 = w2 * (0.012f) * (distanceToGoal[nextPlayer] - 80);
+        F3 = w3 * (0.111f) * (8 - distanceToNextRow[player]);
+        F4 = w4 * (0.111f) * (distanceToNextRow[nextPlayer] - 8) * (0.111f) * row;
 
-        return (F1 + F2 + F3 + F4) * Random.Range(0.99f,1.01f);
+        return (F1 + F2 + F3 + F4) * Random.Range(0.99f, 1.01f);
     }
     #endregion
 
@@ -433,18 +495,20 @@ public class GameManager : MonoBehaviour
     bool AStarDistanceToNextRow()
     {
         int player = 0;
-        int objective = currentTile.row + 1;
+        int objective = pawns[0].Tile.row + 1;
         int[] retVal = new int[NumPlayers];
 
         retVal[player] = AStar(player, objective, true);
+        //Debug.Log(retVal[player]);
         if (retVal[player] < 0)
         {
             return false;
         }
 
         player = 1;
-        objective = currentTile.row - 1;
+        objective = pawns[1].Tile.row - 1;
         retVal[player] = AStar(player, objective, true);
+        //Debug.Log(retVal[player]);
         if (retVal[player] < 0)
         {
             return false;
@@ -583,8 +647,12 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region Misc
-    bool PlayMove(Move move, int player)
+    int getRowAbs(int player)
+    {
+        return (player == 0 ? pawns[0].Tile.row : BoardBorder - pawns[1].Tile.row);
+    }
+
+    bool PlayMove(Stack<Move> history, Move move, int player)
     {
         board.RemoveTempLinks(pawns[GetNextPlayer(player)].Tile);
         board.RemoveTempLinks(pawns[player].Tile);
@@ -592,7 +660,7 @@ public class GameManager : MonoBehaviour
         switch (move.type)
         {
             case Move.MovePawn:
-                moveHistory.Push(new Move(pawns[player].Tile.row, pawns[player].Tile.col));
+                history.Push(new Move(pawns[player].Tile.row, pawns[player].Tile.col));
                 board.MovePawnTo(pawns[player], move.row, move.col);
                 break;
 
@@ -602,8 +670,9 @@ public class GameManager : MonoBehaviour
                 {
                     return false;
                 }
-                moveHistory.Push(new Move(move));
+                history.Push(new Move(move));
                 board.SetWall(wall, move.row, move.col, move.isHorizontal);
+                availableWalls[player]--;
                 break;
 
             default:
@@ -614,7 +683,7 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
-    bool UndoMove(Move move, int player)
+    bool UndoLastMove(Move move, int player)
     {
         board.RemoveTempLinks(pawns[player].Tile);
         board.RemoveTempLinks(pawns[GetNextPlayer(player)].Tile);
@@ -627,6 +696,7 @@ public class GameManager : MonoBehaviour
 
             case Move.SetWall:
                 board.RemoveWall(move.row, move.col);
+                availableWalls[player]++;
                 break;
 
             default:
@@ -649,6 +719,23 @@ public class GameManager : MonoBehaviour
         }
 
         return null;
+    }
+
+    bool IsCPU(int player)
+    {
+        if (player == 0)
+        {
+            return CPU_0;
+        }
+        else
+        {
+            return CPU_1;
+        }
+    }
+
+    public bool IsCPUCurrentPlayer()
+    {
+        return IsCPU(currentPlayer);
     }
 
     int GetNextPlayer(int player)
@@ -709,5 +796,237 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
-    #endregion
+    public void OnTileSelected(Tile tile)
+    {
+        if (gameState == GameState.Ongoing)
+        {
+            if (mode == GameManager.Mode.None)
+            {
+                //Debug.Log("Test mode: " + testMode);
+                if (testMode)
+                {
+                    if (selectedTile == null)
+                    {
+                        tile.Selected = true;
+                        selectedTile = tile;
+                    }
+                    else
+                    {
+                        selectedTile.Selected = false;
+                        selectedTile = tile;
+                        selectedTile.Selected = true;
+                    }
+                    if (tile.HasPawn)
+                    {
+                        mode = GameManager.Mode.MovePawn;
+                    }
+                }
+                else
+                {
+                    if (tile.HasPawn && tile.Pawn.player == currentPlayer && !IsCPU(currentPlayer))
+                    {
+                        if (selectedTile == null)
+                        {
+                            tile.Selected = true;
+                            selectedTile = tile;
+                        }
+                        else
+                        {
+                            selectedTile.Selected = false;
+                            selectedTile = tile;
+                            selectedTile.Selected = true;
+                        }
+                        mode = GameManager.Mode.MovePawn;
+                    }
+                    else
+                    {
+                        //Debug.Log("Cannot select enemy piece or empty tile on game mode (Toggle 'Debug Mode').");
+                    }
+                }
+            }
+            else if (mode == GameManager.Mode.MovePawn)
+            {
+                if (CanMovePiece(selectedTile, tile))
+                {
+                    PlayMove(moveHistory, new Move(tile.row, tile.col), selectedTile.Pawn.player);
+                    if (FinalState(currentPlayer))
+                    {
+                        gameState = GameState.Over;
+                        winner = currentPlayer;
+                        PrintGameOver();
+                    }
+                    OnTileDeselected(selectedTile);
+                    NextTurn();
+                    mode = GameManager.Mode.None;
+                    wait = true;
+                }
+            }
+            else if (mode == GameManager.Mode.PlaceWallH)
+            {
+                if (CanPlaceWall(currentPlayer, tile, true))
+                {
+                    if (PlayMove(moveHistory, new Move(tile.row, tile.col, true), currentPlayer))
+                    {
+                        if (ValidBoard())
+                        {
+                            NextTurn();
+                            mode = GameManager.Mode.None;
+                            wait = true;
+                        }
+                        else
+                        {
+                            UndoLastMove(moveHistory.Pop(), currentPlayer);
+                        }
+                    }
+                }
+            }
+            else if (mode == GameManager.Mode.PlaceWallV)
+            {
+                if (CanPlaceWall(currentPlayer, tile, false))
+                {
+                    if (PlayMove(moveHistory, new Move(tile.row, tile.col, false), currentPlayer))
+                    {
+                        if (ValidBoard())
+                        {
+                            NextTurn();
+                            mode = GameManager.Mode.None;
+                            wait = true;
+                        }
+                        else
+                        {
+                            UndoLastMove(moveHistory.Pop(), currentPlayer);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void OnTileDeselected(Tile tile)
+    {
+        tile.Selected = false;
+        selectedTile = null;
+        mode = GameManager.Mode.None;
+    }
+
+    public void ChangeModeTo(GameManager.Mode newMode)
+    {
+        if (mode == GameManager.Mode.MovePawn)
+        {
+            OnTileDeselected(selectedTile);
+        }
+
+        mode = newMode;
+    }
+
+    public bool CanMovePiece(Tile a, Tile b)
+    {
+        return (a.IsNeighborOf(b) && !(b.HasPawn));
+    }
+
+    public void NextTurn()
+    {
+        currentPlayer = GetNextPlayer(currentPlayer);
+        waitingTime = 0;
+    }
+
+    public void SetWeights(float[,] param = null)
+    {
+        if (param == null)
+        {
+            weight[0, 0] = 3f;
+            weight[1, 0] = 1f;
+            weight[2, 0] = 0f;
+            weight[3, 0] = 1f;
+
+            weight[0, 1] = 3f;
+            weight[1, 1] = 1f;
+            weight[2, 1] = 0f;
+            weight[3, 1] = 0f;
+        }
+        else
+        {
+            weight = param;
+        }
+    }
+
+    public void SetWeight(int player, int index, float val)
+    {
+        weight[index, player] = val;
+    }
+
+    public float GetWeight(int player, int index)
+    {
+        return weight[index, player];
+    }
+
+    public void PrintDebug()
+    {
+        //AStarDistanceToNextRow();
+        //AStarDistanceToGoal();
+        //float val = CalcHeuristicValue(0);
+        //Debug.Log("Player: " + 0 + " : " + F1 + " | " + F2 + " | " + F3 + " | " + F4 + " | " + val);
+        //val = CalcHeuristicValue(1);
+        //Debug.Log("Player: " + 1 + " : " + F1 + " | " + F2 + " | " + F3 + " | " + F4 + " | " + val);
+        string debug = "State: " + gameState.ToString() + System.Environment.NewLine;
+        debug += "Mode: " + mode.ToString() + System.Environment.NewLine;
+        debug += "Wait: " + wait + System.Environment.NewLine;
+        debug += "Elapsed: " + waitingTime + System.Environment.NewLine;
+        debug += "Best: " + ((bestMove == null) ?  "Undefined" : bestMove.ToString()) + System.Environment.NewLine;
+        debug += "Is CPU: " + IsCPU(0) + " | " + IsCPU(1) + System.Environment.NewLine;
+
+        Debug.Log(debug);
+    }
+
+    public void PrintGameOver()
+    {
+        Debug.Log("GameOver: " + winner);
+    }
+
+    public void PrintError()
+    {
+        Debug.Log("ERROR");
+    }
+
+    public void PrintWeights()
+    {
+        Debug.Log("Weights 0: " + weight[0, 0] + "| " + weight[1, 0] + "| " + weight[2, 0] + "| " + weight[3, 0]);
+        Debug.Log("Weights 1: " + weight[0, 1] + "| " + weight[1, 1] + "| " + weight[2, 1] + "| " + weight[3, 1]);
+    }
+
+    public void SaveWeights()
+    {
+        StreamWriter stream = new StreamWriter(Names.SaveWeightsPath_ + Names.SaveExt, false);
+        stream.WriteLine(weight[0, 0] + " " + weight[1, 0] + " " + weight[2, 0] + " " + weight[3, 0]);
+        stream.WriteLine(weight[0, 1] + " " + weight[1, 1] + " " + weight[2, 1] + " " + weight[3, 1]);
+        stream.Close();
+    }
+
+    public void ReadWeights()
+    {
+        if (File.Exists(Names.SaveWeightsPath_ + Names.SaveExt))
+        {
+            StreamReader stream = new StreamReader(Names.SaveWeightsPath_ + Names.SaveExt);
+
+            string w = stream.ReadLine();
+            string[] w0 = w.Split(' ');
+            for (int i = 0; i < w0.Length; i++)
+            {
+                weight[i, 0] = float.Parse(w0[i]);
+            }
+
+            w = stream.ReadLine();
+            string[] w1 = w.Split(' ');
+            for (int i = 0; i < w1.Length; i++)
+            {
+                weight[i, 1] = float.Parse(w1[i]);
+            }
+
+            stream.Close();
+        }
+        else
+        {
+            SetWeights();
+        }
+    }
 }

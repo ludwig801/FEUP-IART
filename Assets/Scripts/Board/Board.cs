@@ -201,8 +201,8 @@ public class Board : MonoBehaviour
             link.RemoveTiles();
         }
 
-        a.neighbors.Remove(b);
-        b.neighbors.Remove(a);
+        a.RemoveNeighbor(b);
+        b.RemoveNeighbor(a);
     }
 
     Link GetLink()
@@ -406,52 +406,52 @@ public class Board : MonoBehaviour
     {
         if (Tile.SameRow(a, b))
         {
-            Tile current = a.Leftside(b) ? a : b;
-            Tile end = a.Leftside(b) ? b : a;
+            Tile left = a.Leftside(b) ? a : b;
+            Tile right = a.Leftside(b) ? b : a;
 
-            while (!current.Equals(end))
+            while (!left.Equals(right))
             {
-                if (current.HasWall && current.Wall.Vertical)
+                if (left.HasWall && left.Wall.Vertical)
                 {
                     return false;
                 }
-
-                if (IsValidPosition(current.row + 1, current.col))
+                
+                if (IsValidPosition(left.row + 1, left.col))
                 {
-                    Tile temp = tiles[current.row + 1, current.col];
-                    if (temp.HasWall && temp.Wall.Vertical)
+                    Tile above = tiles[left.row + 1, left.col];
+                    if (above.HasWall && above.Wall.Vertical)
                     {
                         return false;
                     }
                 }
 
-                current = tiles[current.row, current.col + 1];
+                left = tiles[left.row, left.col + 1];
             }
 
             return true;
         }
         else if (Tile.SameCol(a, b))
         {
-            Tile current = a.Below(b) ? a : b;
-            Tile end = a.Below(b) ? b : a;
+            Tile below = a.Below(b) ? a : b;
+            Tile above = a.Below(b) ? b : a;
 
-            while (!current.Equals(end))
+            while (!above.Equals(below))
             {
-                if (current.HasWall && current.Wall.Horizontal)
+                if (above.HasWall && above.Wall.Horizontal)
                 {
                     return false;
                 }
 
-                if (IsValidPosition(current.row, current.col - 1))
+                if (IsValidPosition(above.row, above.col - 1))
                 {
-                    Tile temp = tiles[current.row, current.col - 1];
-                    if (temp.HasWall && temp.Wall.Horizontal)
+                    Tile left = tiles[above.row, above.col - 1];
+                    if (left.HasWall && left.Wall.Horizontal)
                     {
                         return false;
                     }
                 }
 
-                current = tiles[current.row + 1, current.col];
+                above = tiles[above.row - 1, above.col];
             }
 
             return true;
@@ -476,7 +476,7 @@ public class Board : MonoBehaviour
                     else if (IsValidPosition(comp.row, comp.col - 1))
                     {
                         Tile left = tiles[comp.row, comp.col - 1];
-                        if (left.HasWall && left.Wall.Vertical)
+                        if (left.HasWall && left.Wall.Horizontal)
                         {
                             return false;
                         }
@@ -529,11 +529,7 @@ public class Board : MonoBehaviour
                 }
                 else if (comp.Rightside(center))
                 {
-                    if (notComp.HasWall && notComp.Wall.Vertical)
-                    {
-                        return false;
-                    }
-                    else if (center.HasWall && (center.Wall.Horizontal || center.Wall.Vertical))
+                    if (center.HasWall && (center.Wall.Horizontal || center.Wall.Vertical))
                     {
                         return false;
                     }
@@ -541,6 +537,14 @@ public class Board : MonoBehaviour
                     {
                         Tile left = tiles[comp.row, comp.col - 2];
                         if (left.HasWall && left.Wall.Horizontal)
+                        {
+                            return false;
+                        }
+                    }
+                    else if (IsValidPosition(comp.row + 1, comp.col - 1))
+                    {
+                        Tile left = tiles[comp.row + 1, comp.col - 1];
+                        if (left.HasWall && left.Wall.Vertical)
                         {
                             return false;
                         }

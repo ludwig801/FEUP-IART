@@ -57,8 +57,10 @@
      <Compile Include="Assets\Scripts\GamePieces\Piece.cs" />
      <Compile Include="Assets\Scripts\GamePieces\Wall.cs" />
      <Compile Include="Assets\Scripts\Libraries\Names.cs" />
+     <Compile Include="Assets\Scripts\Libraries\NamesUI.cs" />
      <Compile Include="Assets\Scripts\Libraries\Tags.cs" />
      <Compile Include="Assets\Scripts\Tester.cs" />
+     <Compile Include="Assets\Scripts\UIManager.cs" />
      <None Include="Assets\Standard Assets\CrossPlatformInput\CrossPlatformInputGuidelines.txt" />
      <None Include="Assets\Standard Assets\Cameras\CameraGuidelines.txt" />
  <Reference Include="UnityEngine.UI">

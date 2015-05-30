@@ -7,17 +7,20 @@ public class TesterEditor : Editor
 {
     public override void OnInspectorGUI()
     {
+        // thks to pitimoi at unityAnswers!
+        serializedObject.Update();
+        SerializedProperty prop = serializedObject.FindProperty("m_Script");
+        EditorGUILayout.PropertyField(prop, true, new GUILayoutOption[0]);
+        serializedObject.ApplyModifiedProperties();
+        //
+
         Tester script = (Tester)target;
 
         script.numGamesPerPlayer = EditorGUILayout.IntSlider("Games Per Player", script.numGamesPerPlayer, 1, 50);
+        script.overrideMaxRounds = EditorGUILayout.BeginToggleGroup("Override Max Rounds", script.overrideMaxRounds);
+        script.maxRounds = EditorGUILayout.IntSlider("Max Rounds", script.maxRounds, 1, 10);
+        EditorGUILayout.EndToggleGroup();
 
-        if (GUILayout.Button("Start Rounds"))
-        {
-            script.StartRounds();
-        }
-        else if (GUILayout.Button("Stop Rounds"))
-        {
-            script.StopRounds();
-        }
+        script.ongoingRounds = EditorGUILayout.Toggle("Ongoing Rounds", script.ongoingRounds);
     }
 }

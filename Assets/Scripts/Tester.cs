@@ -6,17 +6,22 @@ using System.IO;
 public class Tester : MonoBehaviour
 {
     public int numGamesPerPlayer;
+    public int maxRounds;
+    public bool overrideMaxRounds;
 
-    bool ongoingRounds;
+    public bool ongoingRounds;
     bool stopProgram;
     GameManager manager;
 
+    int fileIndex;
+
     // Statistical variables
-    int currentFeature;
+    int player;
     float[,] weight;
+    float[] weightInit;
     float[] weightInc;
     float[] weightMax;
-    Counter numGames;
+    Counter[] numGames;
     Counter numRounds;
     Counter wins;
     Counter winsTotal;
@@ -33,14 +38,17 @@ public class Tester : MonoBehaviour
     void InitializeVars()
     {
         ongoingRounds = false;
-        numGames = new Counter();
+        numGames = new Counter[GameManager.NumPlayers];
+        for (int i = 0; i < numGames.Length; i++) { numGames[i] = new Counter(); }
         numRounds = new Counter();
+        numRounds.Inc();
         wins = new Counter();
         winsTotal = new Counter();
         losses = new Counter();
         draws = new Counter();
 
         weight = new float[GameManager.NumEvalFeatures, GameManager.NumPlayers];
+        weightInit = new float[GameManager.NumEvalFeatures];
         weightInc = new float[GameManager.NumEvalFeatures];
         weightMax = new float[GameManager.NumEvalFeatures];
 
@@ -48,24 +56,39 @@ public class Tester : MonoBehaviour
         weightInc[1] = 0.2f;
         weightInc[2] = 0.1f;
         weightInc[3] = 0.1f;
-        currentFeature = 0;
 
         weightMax[0] = 3f;
         weightMax[1] = 3f;
         weightMax[2] = 1f;
         weightMax[3] = 1f;
 
-        weight[0, 0] = 0.2f;
-        weight[1, 0] = 0.2f;
+        weight[0, 0] = 1f;
+        weight[1, 0] = 0f;
         weight[2, 0] = 0f;
         weight[3, 0] = 0f;
+        weightInit[0] = weight[0, 0];
+        weightInit[1] = weight[1, 0];
+        weightInit[2] = weight[2, 0];
+        weightInit[3] = weight[3, 0];
 
         weight[0, 1] = 1f;
         weight[1, 1] = 1f;
         weight[2, 1] = 1f;
         weight[3, 1] = 1f;
 
+        manager.SetWeights(weight);
+
         stopProgram = false;
+        player = 0;
+
+        string path;
+        fileIndex = -1;
+
+        do
+        {
+            fileIndex++;
+            path = Names.SavePath_ + fileIndex + Names.SaveExt;
+        } while (File.Exists(path));
     }
 
     // Update is called once per frame
@@ -75,68 +98,23 @@ public class Tester : MonoBehaviour
         {
             if (!stopProgram)
             {
+                //Debug.Log("Game State: " + manager.gameState);
                 switch (manager.gameState)
                 {
                     case GameManager.GameState.Ongoing:
-                        break;
-                    case GameManager.GameState.Error:
-                        manager.Reset();
-                        numGames.Inc();
+                        //Debug.Log("Game " + player + " Over!");
                         break;
                     case GameManager.GameState.Stopped:
-                        if (numGames.Value < numGamesPerPlayer)
-                        {
-                            manager.NewGame(0);
-                        }
-                        else if (numGames.Value < (numGamesPerPlayer * 2))
-                        {
-                            manager.NewGame(1);
-                        }
-                        else
-                        {
-                            numRounds.Inc();
-                        }
-                        break;
-                    case GameManager.GameState.Draw:
-                        numGames.Inc();
-                        draws.Inc();
+                        manager.NewGame(player);
+                        numGames[player].Inc();
                         break;
                     case GameManager.GameState.Over:
-                        if (manager.winner == 0)
-                        {
-                            wins.Inc();
-                            winsTotal.Inc();
-                        }
-                        else
-                        {
-                            losses.Inc();
-                        }
-                        if (numGames.Value == 0)
-                        {
-                            SaveHeaderToFile(0);
-                            SaveStatisticsToFile(0);
-                        }
-                        else if (numGames.Value < numGamesPerPlayer)
-                        {
-                            SaveStatisticsToFile(0);
-                        }
-                        else if (numGames.Value == numGamesPerPlayer)
-                        {
-                            ResetCounters();
-                            SaveHeaderToFile(1);
-                            SaveStatisticsToFile(1);
-                        }
-                        else if (numGames.Value < (numGamesPerPlayer * 2))
-                        {
-                            SaveStatisticsToFile(1);
-                        }
-                        else
-                        {
-                            UpdateWeights();
-                            ResetCounters();
-                            winsTotal.Reset();
-                        }
-                        numGames.Inc();
+                        UpdateInfo();
+                        //manager.NewGame(player);
+                        //ongoingRounds = false;
+                        break;
+                    case GameManager.GameState.Error:
+                        UpdateInfo();
                         break;
                     default:
                         break;
@@ -144,33 +122,51 @@ public class Tester : MonoBehaviour
             }
             else
             {
-                UnityEditor.EditorApplication.ExecuteMenuItem("Edit/Play");
+                //UnityEditor.EditorApplication.ExecuteMenuItem("Edit/Play");
             }
         }
     }
 
-    void SaveHeaderToFile(int startingPlayer)
+    void SaveHeaderToFile(bool full = true)
     {
-        StreamWriter stream = new StreamWriter(Names.SavePath_ + numRounds.Value, true);
-        stream.WriteLine("--------------------------" + numRounds.Value);
-        stream.WriteLine("Round: " + numRounds.Value);
-        stream.WriteLine("Num Games Per Player: " + numGamesPerPlayer);
-        stream.WriteLine("--------------------------" + numRounds.Value);
-        stream.WriteLine("Feature 1: " + weight[0, 0]);
-        stream.WriteLine("Feature 2: " + weight[1, 0]);
-        stream.WriteLine("Feature 3: " + weight[2, 0]);
-        stream.WriteLine("Feature 4: " + weight[3, 0]);
+        StreamWriter stream = new StreamWriter(Names.SavePath_ + fileIndex + Names.SaveExt, true);
+        if (full) stream.WriteLine("==============================================");
+        if (full) stream.WriteLine("Round : " + numRounds.Value);
+        if (full) stream.WriteLine("Games : " + numGamesPerPlayer);
+        if (full) stream.WriteLine("Feats : [ " + weight[0, 0] + " | " + weight[1, 0] + " | " + weight[2, 0] + " | " + weight[3, 0] + " ]");
+        stream.WriteLine("---------------");
+        stream.WriteLine("Starting : " + player);
+        stream.WriteLine(">");
         stream.Close();
     }
 
-    void SaveStatisticsToFile(int startingPlayer)
+    void SaveStatisticsToFile()
     {
-        StreamWriter stream = new StreamWriter(Names.SavePath_ + numRounds.Value, true);
-        stream.WriteLine("--------------------------" + numRounds.Value);
-        stream.WriteLine("Game: " + numGames.Value);
-        stream.WriteLine("Wins 1: " + wins.Value);
-        stream.WriteLine("Wins 2: " + losses.Value);
-        stream.WriteLine("Draws:" + draws.Value);
+        StreamWriter stream = new StreamWriter(Names.SavePath_ + fileIndex + Names.SaveExt, true);
+        stream.WriteLine(">");
+        stream.WriteLine("Wins   : " + wins.Value);
+        stream.WriteLine("Losses : " + losses.Value);
+        stream.WriteLine("Draws  : " + draws.Value);
+        stream.Close();
+    }
+
+    void SaveGameToFile()
+    {
+        StreamWriter stream = new StreamWriter(Names.SavePath_ + fileIndex + Names.SaveExt, true);
+        if (manager.winner == -1)
+        {
+            stream.WriteLine("-");
+            draws.Inc();
+        }
+        else if (manager.winner == 0)
+        {
+            wins.Inc();
+            winsTotal.Inc();
+        }
+        else
+        {
+            losses.Inc();
+        }
         stream.Close();
     }
 
@@ -179,36 +175,67 @@ public class Tester : MonoBehaviour
         wins.Reset();
         losses.Reset();
         draws.Reset();
-        numGames.Reset();
     }
 
-    void UpdateWeights()
+    void NextPlayer()
     {
-        if (weight[currentFeature, 0] < weightMax[currentFeature])
+        player++;
+        //player %= GameManager.NumPlayers;
+    }
+
+    void NextRound()
+    {
+        if (overrideMaxRounds && (numRounds.Value >= maxRounds))
         {
-            weight[currentFeature, 0] += weightInc[currentFeature];
+            stopProgram = true;
         }
         else
         {
-            currentFeature++;
-            if (currentFeature >= GameManager.NumEvalFeatures)
-            {
-                stopProgram = true;
-            }
-            else
-            {
-                weight[currentFeature, 0] += weightInc[currentFeature];
-            }
+            numRounds.Inc();
+            player = 0;
+            UpdateWeights();
         }
     }
 
-    public void StartRounds()
+    void UpdateInfo()
     {
-        ongoingRounds = true;
+        if (player == 0 && numGames[player].Value == 1)
+        {
+            SaveHeaderToFile();
+        }
+        SaveGameToFile();
+        manager.Reset();
+        if (numGames[player].Value >= numGamesPerPlayer)
+        {
+            SaveStatisticsToFile();
+            NextPlayer();
+            ResetCounters();
+            if (player < GameManager.NumPlayers)
+            {
+                SaveHeaderToFile(false);
+            }
+        }
+        if (player >= GameManager.NumPlayers)
+        {
+            NextRound();
+            for (int i = 0; i < numGames.Length; i++) { numGames[i] = new Counter(); }
+        }
     }
 
-    public void StopRounds()
+    void UpdateWeights(int feature = 0)
     {
-        ongoingRounds = false;
+        if (feature > GameManager.NumEvalFeatures)
+        {
+            stopProgram = true;
+        }
+        else
+        {
+            weight[feature, 0] += weightInc[feature];
+            if (weight[feature, 0] > weightMax[feature])
+            {
+                weight[feature, 0] = weightInit[feature];
+                UpdateWeights(feature + 1);
+            }
+        }
     }
 }

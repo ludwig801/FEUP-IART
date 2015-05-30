@@ -4,6 +4,8 @@ using System.Collections.Generic;
 
 public class Tile : MonoBehaviour
 {
+    GameManager manager;
+
 	public List<Tile> neighbors;
 	public int row;
 	public int col;
@@ -18,21 +20,58 @@ public class Tile : MonoBehaviour
 	private Pawn pawn;
 	private bool mouseOver = false;
 	private bool highlight = false;
+    private bool selected = false;
 	
 	public Color color;
 	public Color hoverColor;
 	public Color highlightColor;
+    public Color selectedColor;
 	private Material rendererMaterial;
-	private float transitionModifier = 5f;
-	
+	private float transitionModifier = 50f;
+
 	// Properties
 	public bool Highlight
 	{
 		set
 		{
-			highlight = value;
+            if (value)
+            {
+                highlight = true;
+            }
+            else
+            {
+                bool fade = true;
+                foreach (Tile tile in neighbors)
+                {
+                    if (tile.selected)
+                    {
+                        fade = false;
+                    }
+                }
+                if (fade)
+                {
+                    highlight = false;
+                }
+            }
 		}
 	}
+
+    public bool Selected
+    {
+        get
+        {
+            return selected;
+        }
+
+        set
+        {
+            selected = !selected;
+            foreach (Tile tile in neighbors)
+            {
+                tile.Highlight = selected;
+            }
+        }
+    }
 
 	public Wall Wall
 	{
@@ -75,9 +114,18 @@ public class Tile : MonoBehaviour
 	}
 
 	// Methods
+    void Start()
+    {
+        manager = GameObject.Find(Names.GameManager).GetComponent<GameManager>();
+    }
+
 	void Update()
 	{
-		if(mouseOver)
+        if (selected)
+        {
+            rendererMaterial.color = Color.Lerp(rendererMaterial.color, selectedColor, transitionModifier * Time.deltaTime);
+        }
+		else if(mouseOver)
 		{
 			rendererMaterial.color = Color.Lerp(rendererMaterial.color, hoverColor, transitionModifier * Time.deltaTime);
 		}
@@ -95,7 +143,7 @@ public class Tile : MonoBehaviour
 	{
 		neighbors = new List<Tile> ();
 		rendererMaterial = GetComponent<Renderer>().material;
-		color = rendererMaterial.color;
+		//color = rendererMaterial.color;
         Reset();
 	}
 
@@ -112,19 +160,36 @@ public class Tile : MonoBehaviour
 	void OnMouseEnter()
 	{
 		mouseOver = true;
-		foreach(Tile tile in neighbors)
-		{
-			tile.Highlight = true;
-		}
+        Highlight = true;
+        foreach (Tile tile in neighbors)
+        {
+            tile.Highlight = true;
+        }
 	}
+
+    void OnMouseUpAsButton()
+    {
+        if (!selected)
+        {
+            manager.OnTileSelected(this);
+        }
+        else
+        {
+            manager.OnTileDeselected(this);
+        }
+    }
 
 	void OnMouseExit()
 	{
 		mouseOver = false;
-		foreach(Tile tile in neighbors)
-		{
-			tile.Highlight = false;
-		}
+        Highlight = false;
+        if (!selected)
+        {
+            foreach (Tile tile in neighbors)
+            {
+                tile.Highlight = false;
+            }
+        }
 	}
 
 	public void SetPawn(Pawn pawn)
@@ -154,6 +219,15 @@ public class Tile : MonoBehaviour
 			wall = null;
 		}
 	}
+
+    public void RemoveNeighbor(Tile b)
+    {
+        if (neighbors.Contains(b))
+        {
+            b.Highlight = false;
+            neighbors.Remove(b);
+        }
+    }
 
 	public override string ToString()	
 	{
@@ -194,6 +268,11 @@ public class Tile : MonoBehaviour
 	{
 		return neighbors.Contains(b);
 	}
+
+    public bool IsNeighborOf(Tile b)
+    {
+        return neighbors.Contains(b);
+    }
 
     // Class Methods
     public static bool Contiguous(Tile a, Tile b)

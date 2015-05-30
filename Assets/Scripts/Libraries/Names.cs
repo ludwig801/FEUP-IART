@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class Names : MonoBehaviour
+public abstract class Names
 {
 	public const string MainCamera = "Main Camera";
 	public const string MainLight = "Directional Light";
@@ -16,4 +16,6 @@ public class Names : MonoBehaviour
 	public const string Wall_ = "Wall_";
 	public const string Links = "Links";
     public const string SavePath_ = "Statistics/Save_";
+    public const string SaveWeightsPath_ = "Statistics/Weights_";
+    public const string SaveExt = ".sav";
 }
