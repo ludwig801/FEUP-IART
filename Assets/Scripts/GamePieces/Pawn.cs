@@ -5,21 +5,29 @@ public class Pawn : Piece
 {
     public Color[] Colors;
 
+    public bool HasTile
+    {
+        get
+        {
+            return Tile != null;
+        }
+    }
+
     public Tile Tile
     {
         get
         {
-            return this.tile;
+            return _tile;
         }
 
         set
         {
-            tile = value;
-            if (tile != null)
+            _tile = value;
+            if (_tile != null)
             {
                 visible = true;
-                transform.position = tile.transform.position + new Vector3(0f, 0.5f, 0f);
-                tile.SetPawn(this);
+                transform.position = _tile.transform.position + new Vector3(0f, 0.5f, 0f);
+                _tile.SetPawn(this);
             }
             else
             {
@@ -30,7 +38,7 @@ public class Pawn : Piece
 
     void Start()
     {
-        visible = (tile != null);
+        visible = (_tile != null);
         rendererComponent = GetComponent<Renderer>();
         rendererComponent.material.color = Colors[player];
     }

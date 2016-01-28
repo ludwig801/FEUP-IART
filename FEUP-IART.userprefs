@@ -1,8 +1,15 @@
-﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="MonoDevelop.Default" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\GameManager.cs">
+﻿<Properties StartupItem="Assembly-CSharp.csproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="Unity.Instance.Unity Editor" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\Tester.cs">
     <Files>
-      <File FileName="Assets\Scripts\GameManager.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\GameManager.cs" Line="86" Column="25" />
+      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\GameAI\Move.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\Board\Tile.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\Board\BoardTile.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="37" Column="9" />
+      <File FileName="Assets\Scripts\Tester.cs" Line="102" Column="1" />
+      <File FileName="Assets\Editor\GameManagerEditor.cs" Line="34" Column="55" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

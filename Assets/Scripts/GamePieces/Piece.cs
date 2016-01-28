@@ -4,7 +4,7 @@ using System.Collections;
 public class Piece : MonoBehaviour
 {
 	public int player;
-	protected Tile tile;
+	protected Tile _tile;
 
 	public bool visible;
 	protected Renderer rendererComponent;

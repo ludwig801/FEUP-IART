@@ -11,10 +11,10 @@ public class Tile : MonoBehaviour
 	public int col;
 
     // AStar
-    public int gValue;
-    public int hValue;
-    public int fValue;
-    public Tile parent;
+    public int AStarCostValue;
+    public int AStarHeuristicValue;
+	public int AStarFunctionValue { get { return AStarCostValue + AStarHeuristicValue; } }
+    public Tile AStarPathParent;
 
 	private Wall wall;
 	private Pawn pawn;
@@ -151,10 +151,9 @@ public class Tile : MonoBehaviour
     {
         wall = null;
         pawn = null;
-        parent = null;
-        gValue = 0;
-        hValue = 0;
-        fValue = 0;
+        AStarPathParent = null;
+        AStarCostValue = 0;
+        AStarHeuristicValue = 0;
     }
 
 	void OnMouseEnter()

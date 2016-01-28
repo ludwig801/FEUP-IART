@@ -11,7 +11,7 @@ public class Tester : MonoBehaviour
 
     public bool ongoingRounds;
     bool stopProgram;
-    GameManager manager;
+    GameManager _gameManager;
 
     int fileIndex;
 
@@ -31,14 +31,14 @@ public class Tester : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-        manager = GetComponent<GameManager>();
+        _gameManager = GameManager.Instance;
         InitializeVars();
     }
 
     void InitializeVars()
     {
         ongoingRounds = false;
-        numGames = new Counter[GameManager.NumPlayers];
+        numGames = new Counter[_gameManager.NumPlayers];
         for (int i = 0; i < numGames.Length; i++) { numGames[i] = new Counter(); }
         numRounds = new Counter();
         numRounds.Inc();
@@ -47,10 +47,10 @@ public class Tester : MonoBehaviour
         losses = new Counter();
         draws = new Counter();
 
-        weight = new float[GameManager.NumEvalFeatures, GameManager.NumPlayers];
-        weightInit = new float[GameManager.NumEvalFeatures];
-        weightInc = new float[GameManager.NumEvalFeatures];
-        weightMax = new float[GameManager.NumEvalFeatures];
+        weight = new float[_gameManager.Minimax.NumEvalFeatures, _gameManager.NumPlayers];
+        weightInit = new float[_gameManager.Minimax.NumEvalFeatures];
+        weightInc = new float[_gameManager.Minimax.NumEvalFeatures];
+        weightMax = new float[_gameManager.Minimax.NumEvalFeatures];
 
         weightInc[0] = 0.2f;
         weightInc[1] = 0.2f;
@@ -76,7 +76,7 @@ public class Tester : MonoBehaviour
         weight[2, 1] = 1f;
         weight[3, 1] = 1f;
 
-        manager.SetWeights(weight);
+        _gameManager.Minimax.SetWeights(weight);
 
         stopProgram = false;
         player = 0;
@@ -99,13 +99,13 @@ public class Tester : MonoBehaviour
             if (!stopProgram)
             {
                 //Debug.Log("Game State: " + manager.gameState);
-                switch (manager.gameState)
+                switch (_gameManager.CurrentGameState)
                 {
                     case GameManager.GameState.Ongoing:
                         //Debug.Log("Game " + player + " Over!");
                         break;
                     case GameManager.GameState.Stopped:
-                        manager.NewGame(player);
+                        _gameManager.NewGame(player);
                         numGames[player].Inc();
                         break;
                     case GameManager.GameState.Over:
@@ -153,12 +153,12 @@ public class Tester : MonoBehaviour
     void SaveGameToFile()
     {
         StreamWriter stream = new StreamWriter(Names.SavePath_ + fileIndex + Names.SaveExt, true);
-        if (manager.winner == -1)
+        if (_gameManager.CurrentGameState == GameManager.GameState.Draw)
         {
             stream.WriteLine("-");
             draws.Inc();
         }
-        else if (manager.winner == 0)
+        else if (_gameManager.Winner == 0)
         {
             wins.Inc();
             winsTotal.Inc();
@@ -204,18 +204,18 @@ public class Tester : MonoBehaviour
             SaveHeaderToFile();
         }
         SaveGameToFile();
-        manager.Reset();
+        _gameManager.CurrentGameState = GameManager.GameState.Stopped;
         if (numGames[player].Value >= numGamesPerPlayer)
         {
             SaveStatisticsToFile();
             NextPlayer();
             ResetCounters();
-            if (player < GameManager.NumPlayers)
+            if (player < _gameManager.NumPlayers)
             {
                 SaveHeaderToFile(false);
             }
         }
-        if (player >= GameManager.NumPlayers)
+        if (player >= _gameManager.NumPlayers)
         {
             NextRound();
             for (int i = 0; i < numGames.Length; i++) { numGames[i] = new Counter(); }
@@ -224,7 +224,7 @@ public class Tester : MonoBehaviour
 
     void UpdateWeights(int feature = 0)
     {
-        if (feature > GameManager.NumEvalFeatures)
+        if (feature > _gameManager.Minimax.NumEvalFeatures)
         {
             stopProgram = true;
         }

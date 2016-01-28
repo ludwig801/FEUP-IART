@@ -10,23 +10,31 @@ public class Wall : Piece
     {
         get
         {
-            return this.tile;
+            return _tile;
         }
 
         set
         {
-            tile = value;
-            if (tile != null)
+            _tile = value;
+            if (_tile != null)
             {
                 visible = true;
-                transform.position = tile.transform.position + new Vector3(0f, 0.5f, 0f);
-                tile.SetWall(this);
+                transform.position = _tile.transform.position + new Vector3(0f, 0.5f, 0f);
+                _tile.SetWall(this);
             }
             else
             {
                 transform.position = new Vector3(0f, 0.5f, 0f);
                 visible = false;
             }
+        }
+    }
+
+    public bool HasTile
+    {
+        get
+        {
+            return Tile != null;
         }
     }
 
@@ -68,7 +76,7 @@ public class Wall : Piece
     {
         get
         {
-            return (tile == null);
+            return (_tile == null);
         }
     }
 

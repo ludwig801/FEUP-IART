@@ -14,10 +14,12 @@ public class GameManagerEditor : Editor
     public override void OnInspectorGUI()
     {
         // thks to pitimoi at unityAnswers!
+        GUI.enabled = false;
         serializedObject.Update();
         SerializedProperty prop = serializedObject.FindProperty("m_Script");
         EditorGUILayout.PropertyField(prop, true, new GUILayoutOption[0]);
         serializedObject.ApplyModifiedProperties();
+        GUI.enabled = true;
         //
 
         GameManager script = (GameManager)target;
@@ -29,24 +31,7 @@ public class GameManagerEditor : Editor
         script.numWallsPerPlayer = EditorGUILayout.IntSlider("Walls Per Player", script.numWallsPerPlayer, 0, 10);
         script.minimaxDepth = EditorGUILayout.IntSlider("Minimax Depth", script.minimaxDepth, 1, 3);
 
-        script.CPU_0 = EditorGUILayout.Toggle("CPU [0]", script.CPU_0);
-        script.CPU_1 = EditorGUILayout.Toggle("CPU [1]", script.CPU_1);
-
-        if (GUILayout.Button("Next Turn"))
-        {
-            script.NextTurn();
-        }
-        if (GUILayout.Button("Play AI Move"))
-        {
-            script.PlayAIMove();
-        }
-        if (GUILayout.Button("Undo AI Move"))
-        {
-            script.UndoLastMove();
-        }
-        if (GUILayout.Button("Print Reference Values"))
-        {
-            script.PrintDebug();
-        }
+        script.CPU_0 = EditorGUILayout.Toggle("CPU (0)", script.CPU_0);
+        script.CPU_1 = EditorGUILayout.Toggle("CPU (1)", script.CPU_1);
     }
 }

@@ -6,52 +6,42 @@ public class Move
     public const int MovePawn = 0;
     public const int SetWall = 1;
 
-    public int type;
-    public int row, col;
-    public bool isHorizontal;
+    public int Type;
+    public int Row, Col;
+    public bool IsHorizontal;
 
     public Move(Move move)
     {
-        this.type = move.type;
-        this.row = move.row;
-        this.col = move.col;
-        this.isHorizontal = move.isHorizontal;
-    }
-
-    public Move(float row, float col)
-        : this((int)row, (int)col)
-    {
+        Type = move.Type;
+        Row = move.Row;
+        Col = move.Col;
+        IsHorizontal = move.IsHorizontal;
     }
 
     public Move(int row, int col)
     {
-        this.type = MovePawn;
-        this.row = row;
-        this.col = col;
-    }
-
-    public Move(float row, float col, bool horizontal)
-        : this((int)row, (int)col, horizontal)
-    {
+        Type = MovePawn;
+		Row = row;
+		Col = col;
     }
 
     public Move(int row, int col, bool horizontal)
     {
-        this.type = SetWall;
-        this.row = row;
-        this.col = col;
-        this.isHorizontal = horizontal;
+        Type = SetWall;
+        Row = row;
+        Col = col;
+        IsHorizontal = horizontal;
     }
 
     public override string ToString()
     {
-        if (type == MovePawn)
+        if (Type == MovePawn)
         {
-            return "Move Pawn to: " + row + " " + col;
+            return "Move Pawn to: " + Row + " " + Col;
         }
         else
         {
-            return "Set Wall at: " + row + " " + col + " (" + isHorizontal + ")";
+            return "Set Wall at: " + Row + " " + Col + " (" + IsHorizontal + ")";
         }
     }
 }

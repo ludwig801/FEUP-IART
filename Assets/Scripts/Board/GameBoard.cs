@@ -2,19 +2,19 @@
 using System.Collections;
 using System.Collections.Generic;
 
-public class Board : MonoBehaviour
+public class GameBoard : MonoBehaviour
 {
-    public GameObject tilePrefab;
-    public GameObject linkPrefab;
+    public Transform TilesTransform, LinksTransform, VisualBoardTransform;
+    public GameObject tilePrefab, linkPrefab;
 
+    [Range(1, 5)]
     public int tileSize;
+    [Range(1, 5)]
     public float tileSpacing;
     public int rows;
     public int columns;
-
-    private Tile[,] tiles;
-    private Transform tileTransform;
-    private List<Link> links;
+    public Tile[,] Tiles;
+    public List<Link> Links;
 
     // Properties
     public int Size
@@ -31,90 +31,38 @@ public class Board : MonoBehaviour
         }
     }
 
-    public Tile[,] Tiles
-    {
-        get
-        {
-            return tiles;
-        }
-    }
-
     public int Border
     {
         get
         {
-            return (Size - 1);
+            return Size - 1;
         }
-    }
-
-    public bool HasBoard
-    {
-        get
-        {
-            return (transform.FindChild(Names.Tiles).childCount > 0);
-        }
-    }
-
-    // Methods
-    void Start()
-    {
-        tileTransform = transform.FindChild(Names.Tiles);
     }
 
     public void Init()
     {
         GenerateBoard();
-        CreateLinkPrefabs();
         CalcNeighbors();
     }
 
     public void Reset()
     {
-        for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < columns; j++)
-            {
-                if (j < Border)
-                {
-                    RemoveLink(tiles[i, j], tiles[i, j + 1]);
-                }
-                if (i < Border)
-                {
-                    RemoveLink(tiles[i, j], tiles[i + 1, j]);
-                }
-            }
-        }
+        CalcNeighbors();
 
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
             {
-                if (j < Border)
-                {
-                    AddLink(tiles[i, j], tiles[i, j + 1]);
-                }
-                if (i < Border)
-                {
-                    AddLink(tiles[i, j], tiles[i + 1, j]);
-                }
-            }
-        }
-
-        for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < columns; j++)
-            {
-                tiles[i, j].Reset();
+                Tiles[i, j].Reset();
             }
         }
     }
 
     void GenerateBoard()
     {
-        if (tileTransform == null || tiles == null)
+        if (Tiles == null)
         {
-            tileTransform = transform.FindChild(Names.Tiles);
-            tiles = new Tile[rows, columns];
+            Tiles = new Tile[rows, columns];
         }
 
         float spacing = tileSpacing * tileSize;
@@ -128,35 +76,29 @@ public class Board : MonoBehaviour
                 instance.name = "Tile_" + (i * columns + j);
                 instance.transform.SetParent(transform.FindChild(Names.Tiles));
                 instance.transform.localScale = new Vector3(tileSize, instance.transform.localScale.y, tileSize);
-                tiles[i, j] = instance.GetComponent<Tile>();
-                tiles[i, j].row = i;
-                tiles[i, j].col = j;
-                tiles[i, j].Init();
+                Tiles[i, j] = instance.GetComponent<Tile>();
+                Tiles[i, j].row = i;
+                Tiles[i, j].col = j;
+                Tiles[i, j].Init();
             }
         }
-
-        //Transform mainCamera = GameObject.Find(Tags.MainCamera).transform;
-        //mainCamera.position = new Vector3(0.5f * columns * (tileSize + spacing) - 0.5f * tileSize, mainCamera.position.y, mainCamera.position.z);
-    }
-
-    void CreateLinkPrefabs()
-    {
-        links = new List<Link>();
     }
 
     void CalcNeighbors()
     {
+        var border = Size - 1;
+
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
             {
-                if (j < Border)
+                if (j < border)
                 {
-                    RemoveLink(tiles[i, j], tiles[i, j + 1]);
+                    RemoveLinkAt(Tiles[i, j], Tiles[i, j + 1]);
                 }
-                if (i < Border)
+                if (i < border)
                 {
-                    RemoveLink(tiles[i, j], tiles[i + 1, j]);
+                    RemoveLinkAt(Tiles[i, j], Tiles[i + 1, j]);
                 }
             }
         }
@@ -165,19 +107,19 @@ public class Board : MonoBehaviour
         {
             for (int j = 0; j < columns; j++)
             {
-                if (j < Border)
+                if (j < border)
                 {
-                    AddLink(tiles[i, j], tiles[i, j + 1]);
+                    AddLinkAt(Tiles[i, j], Tiles[i, j + 1]);
                 }
-                if (i < Border)
+                if (i < border)
                 {
-                    AddLink(tiles[i, j], tiles[i + 1, j]);
+                    AddLinkAt(Tiles[i, j], Tiles[i + 1, j]);
                 }
             }
         }
     }
 
-    void AddLink(Tile a, Tile b)
+    void AddLinkAt(Tile a, Tile b)
     {
         if (a.Neighbor(b) || b.Neighbor(a))
         {
@@ -192,9 +134,9 @@ public class Board : MonoBehaviour
         link.SetTiles(a, b);
     }
 
-    void RemoveLink(Tile a, Tile b)
+    void RemoveLinkAt(Tile a, Tile b)
     {
-        Link link = GetLink(a, b);
+        Link link = GetLinkAt(a, b);
         if (link != null)
         {
             link.Visible = false;
@@ -208,11 +150,11 @@ public class Board : MonoBehaviour
     Link GetLink()
     {
         // If an available Link already exists in the pool
-        for (int i = 0; i < links.Count; i++)
+        for (int i = 0; i < Links.Count; i++)
         {
-            if (links[i].Free)
+            if (Links[i].Free)
             {
-                return links[i];
+                return Links[i];
             }
         }
 
@@ -221,54 +163,27 @@ public class Board : MonoBehaviour
         instance.transform.SetParent(GameObject.Find(Names.Board).transform.FindChild(Names.Links));
         Link newLink = instance.GetComponent<Link>();
         newLink.Init();
-        links.Add(newLink);
+        Links.Add(newLink);
         return newLink;
     }
 
-    Link GetLink(Tile a, Tile b)
+    Link GetLinkAt(Tile a, Tile b)
     {
-        for (int i = 0; i < links.Count; i++)
+        for (int i = 0; i < Links.Count; i++)
         {
-            if (links[i].TileA == a)
+            if (Links[i].TileA == a)
             {
-                if (links[i].TileB == b)
+                if (Links[i].TileB == b)
                 {
-                    return links[i];
+                    return Links[i];
                 }
             }
-            else if (links[i].TileA == b)
+            else if (Links[i].TileA == b)
             {
-                if (links[i].TileB == a)
+                if (Links[i].TileB == a)
                 {
-                    return links[i];
+                    return Links[i];
                 }
-            }
-        }
-
-        return null;
-    }
-
-    public void DestroyBoard()
-    {
-        if (tileTransform == null)
-        {
-            tileTransform = transform.FindChild(Names.Tiles);
-            tiles = null;
-        }
-
-        while (tileTransform.childCount > 0)
-        {
-            DestroyImmediate(tileTransform.GetChild(0).gameObject);
-        }
-    }
-
-    public Tile GetPointedTile()
-    {
-        for (int i = 0; i < tileTransform.childCount; i++)
-        {
-            if (tileTransform.GetChild(i).GetComponent<Tile>().HasMouseOver)
-            {
-                return tileTransform.GetChild(i).GetComponent<Tile>();
             }
         }
 
@@ -277,7 +192,7 @@ public class Board : MonoBehaviour
 
     public Tile GetTileAt(Vector3 position)
     {
-        foreach (Tile tile in tiles)
+        foreach (Tile tile in Tiles)
         {
             if (tile.transform.position.x == position.x && tile.transform.position.z == position.z)
             {
@@ -290,21 +205,24 @@ public class Board : MonoBehaviour
 
     public Tile GetTileAt(int row, int col)
     {
-        return tiles[row, col];
+        return Tiles[row, col];
     }
 
-    public bool IsValidPosition(int mRow, int mCol)
+    public bool IsBoardPosition(int row, int col)
     {
-        return (mRow >= 0 && mRow <= Border && mCol >= 0 && mCol <= Border);
+        return (row >= 0) &&
+        (row < Size) &&
+        (col >= 0) &&
+        (col < Size);
     }
 
     public void MovePawnTo(Pawn pawn, int row, int col)
     {
         pawn.Tile.RemovePawn();
-        pawn.Tile = tiles[row, col];
+        pawn.Tile = Tiles[row, col];
     }
 
-    public void SetWall(Wall wall, int row, int col, bool horizontal)
+    public void PutWallAt(Wall wall, int row, int col, bool horizontal)
     {
         Tile tile = GetTileAt(row, col);
         Tile right = GetTileAt(tile.row, tile.col + 1);
@@ -313,18 +231,18 @@ public class Board : MonoBehaviour
 
         if (horizontal)
         {
-            RemoveLink(tile, below);
-            RemoveLink(right, rightBelow);
-            RemoveLink(right, below);
+            RemoveLinkAt(tile, below);
+            RemoveLinkAt(right, rightBelow);
+            RemoveLinkAt(right, below);
         }
         else
         {
-            RemoveLink(tile, right);
-            RemoveLink(below, rightBelow);
-            RemoveLink(tile, rightBelow);
+            RemoveLinkAt(tile, right);
+            RemoveLinkAt(below, rightBelow);
+            RemoveLinkAt(tile, rightBelow);
         }
 
-        wall.Tile = tiles[row, col];
+        wall.Tile = Tiles[row, col];
         wall.Horizontal = horizontal;
     }
 
@@ -339,19 +257,19 @@ public class Board : MonoBehaviour
 
         if (wall.Horizontal)
         {
-            AddLink(tile, below);
-            AddLink(right, rightBelow);
+            AddLinkAt(tile, below);
+            AddLinkAt(right, rightBelow);
         }
         else
         {
-            AddLink(tile, right);
-            AddLink(below, rightBelow);
+            AddLinkAt(tile, right);
+            AddLinkAt(below, rightBelow);
         }
 
         tile.RemoveWall();
     }
 
-    public void SetTempLinks(Tile tile)
+    public void CreateTileTempLinks(Tile tile)
     {
         List<Tile> tiles = new List<Tile>();
 
@@ -371,14 +289,14 @@ public class Board : MonoBehaviour
                 {
                     if (CanBeTempNeighbors(a, b, tile))
                     {
-                        AddLink(a, b);
+                        AddLinkAt(a, b);
                     }
                 }
             }
         }
     }
 
-    public void RemoveTempLinks(Tile tile)
+    public void RemoveTileTempLinks(Tile tile)
     {
         List<Tile> tiles = new List<Tile>();
 
@@ -396,7 +314,7 @@ public class Board : MonoBehaviour
             {
                 if (!a.Equals(b))
                 {
-                    RemoveLink(a, b);
+                    RemoveLinkAt(a, b);
                 }
             }
         }
@@ -416,16 +334,16 @@ public class Board : MonoBehaviour
                     return false;
                 }
                 
-                if (IsValidPosition(left.row + 1, left.col))
+                if (IsBoardPosition(left.row + 1, left.col))
                 {
-                    Tile above = tiles[left.row + 1, left.col];
+                    Tile above = Tiles[left.row + 1, left.col];
                     if (above.HasWall && above.Wall.Vertical)
                     {
                         return false;
                     }
                 }
 
-                left = tiles[left.row, left.col + 1];
+                left = Tiles[left.row, left.col + 1];
             }
 
             return true;
@@ -442,16 +360,16 @@ public class Board : MonoBehaviour
                     return false;
                 }
 
-                if (IsValidPosition(above.row, above.col - 1))
+                if (IsBoardPosition(above.row, above.col - 1))
                 {
-                    Tile left = tiles[above.row, above.col - 1];
+                    Tile left = Tiles[above.row, above.col - 1];
                     if (left.HasWall && left.Wall.Horizontal)
                     {
                         return false;
                     }
                 }
 
-                above = tiles[above.row - 1, above.col];
+                above = Tiles[above.row - 1, above.col];
             }
 
             return true;
@@ -469,13 +387,13 @@ public class Board : MonoBehaviour
                     {
                         return false;
                     }
-                    else if(center.HasWall && center.Wall.Vertical)
+                    else if (center.HasWall && center.Wall.Vertical)
                     {
                         return false;
                     }
-                    else if (IsValidPosition(comp.row, comp.col - 1))
+                    else if (IsBoardPosition(comp.row, comp.col - 1))
                     {
-                        Tile left = tiles[comp.row, comp.col - 1];
+                        Tile left = Tiles[comp.row, comp.col - 1];
                         if (left.HasWall && left.Wall.Horizontal)
                         {
                             return false;
@@ -492,9 +410,9 @@ public class Board : MonoBehaviour
                     {
                         return false;
                     }
-                    else if (IsValidPosition(comp.row + 1, comp.col))
+                    else if (IsBoardPosition(comp.row + 1, comp.col))
                     {
-                        Tile above = tiles[comp.row + 1, comp.col];
+                        Tile above = Tiles[comp.row + 1, comp.col];
                         if (above.HasWall && above.Wall.Vertical)
                         {
                             return false;
@@ -506,8 +424,8 @@ public class Board : MonoBehaviour
                     return false;
                 }
             }
-            else // comp rightside to notComp
-            {
+            else
+            { // comp rightside to notComp
                 if (comp.Above(center))
                 {
                     if (comp.HasWall && comp.Wall.Horizontal)
@@ -518,9 +436,9 @@ public class Board : MonoBehaviour
                     {
                         return false;
                     }
-                    else if (IsValidPosition(comp.row, comp.col - 1))
+                    else if (IsBoardPosition(comp.row, comp.col - 1))
                     {
-                        Tile left = tiles[comp.row, comp.col - 1];
+                        Tile left = Tiles[comp.row, comp.col - 1];
                         if (left.HasWall && (left.Wall.Vertical || left.Wall.Horizontal))
                         {
                             return false;
@@ -533,17 +451,17 @@ public class Board : MonoBehaviour
                     {
                         return false;
                     }
-                    else if (IsValidPosition(comp.row, comp.col - 2))
+                    else if (IsBoardPosition(comp.row, comp.col - 2))
                     {
-                        Tile left = tiles[comp.row, comp.col - 2];
+                        Tile left = Tiles[comp.row, comp.col - 2];
                         if (left.HasWall && left.Wall.Horizontal)
                         {
                             return false;
                         }
                     }
-                    else if (IsValidPosition(comp.row + 1, comp.col - 1))
+                    else if (IsBoardPosition(comp.row + 1, comp.col - 1))
                     {
-                        Tile left = tiles[comp.row + 1, comp.col - 1];
+                        Tile left = Tiles[comp.row + 1, comp.col - 1];
                         if (left.HasWall && left.Wall.Vertical)
                         {
                             return false;
