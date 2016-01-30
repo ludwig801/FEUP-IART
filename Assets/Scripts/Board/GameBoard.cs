@@ -124,54 +124,10 @@ public class GameBoard : MonoBehaviour
             var row = Mathf.Max(i * Size - 1, 0);
             Players[i].Pawn.Tile = Tiles[row, col];
             Players[i].Pawn.Tile.Occupied = true;
+            Players[i].ObjectiveRow = Mathf.Max(Size - i * Size - 1, 0);
         }
     }
-
-    void NextTurn()
-    {
-        RemoveTemporaryEdges();
-
-        CurrentPlayer = GetNextPlayer();
-
-        for (var i = 0; i < Players.Count; i++)
-        {
-            if (i != CurrentPlayer)
-            {
-                CreateTemporaryEdges(Players[i].Pawn.Tile);
-            }
-        }
-    }
-
-    void PreviousTurn()
-    {
-        RemoveTemporaryEdges();
-
-        CurrentPlayer = GetPreviousPlayer();
-
-        for (var i = 0; i < Players.Count; i++)
-        {
-            if (i != CurrentPlayer)
-            {
-                CreateTemporaryEdges(Players[i].Pawn.Tile);
-            }
-        }
-    }
-
-    int GetNextPlayer()
-    {
-        var next = CurrentPlayer + 1;
-        next %= Players.Count;
-        return next;
-    }
-
-    int GetPreviousPlayer()
-    {
-        var previous = CurrentPlayer - 1;
-        if (previous < 0)
-            previous = Players.Count - previous;
-        return previous;
-    }
-
+       
     void CreateEdge(Tile src, Tile dest)
     {
         foreach (Edge edge in Edges)
@@ -257,6 +213,21 @@ public class GameBoard : MonoBehaviour
         }
     }
 
+    public int GetNextPlayer()
+    {
+        var next = CurrentPlayer + 1;
+        next %= Players.Count;
+        return next;
+    }
+
+    public int GetPreviousPlayer()
+    {
+        var previous = CurrentPlayer - 1;
+        if (previous < 0)
+            previous = Players.Count - previous;
+        return previous;
+    }
+
     public void OnTileClicked(Tile tile, PointerEventData eventData)
     {
         if (KeysPressed[KeyCode.LeftControl])
@@ -271,78 +242,26 @@ public class GameBoard : MonoBehaviour
         }
     }
 
+    public bool PlayMove(Move move)
+    {
+        if (move.GetType() == typeof(MovePawn))
+        {
+            var movePawn = move as MovePawn;
+            return MovePawnTo(movePawn.Pawn, movePawn.Destination);
+        }
+        else if (move.GetType() == typeof(PlaceWall))
+        {
+            var placeWall = move as PlaceWall;
+            return CreateWall(placeWall.Tile, placeWall.Horizontal);
+        }
+
+        return false;
+    }
+
     bool IsBoardPosition(int row, int col)
     {
         return (row >= 0) && (row < Size) &&
         (col >= 0) && (col < Size);
-    }
-
-    bool MovePawnTo(Pawn pawn, Tile dest)
-    {
-        if (!dest.CanMoveTo(pawn.Tile))
-            return false;
-
-        var src = pawn.Tile;
-        src.Occupied = false;
-        dest.Occupied = true;
-        pawn.Tile = dest;
-
-        Moves.Push(new MovePawn(pawn, src, dest));
-        return true;
-    }
-
-    bool CreateWall(Tile tile, bool horizontal)
-    {
-        if (!CanPlaceWall(tile, horizontal))
-            return false;
-
-        var tileEast = Tiles[tile.Row, tile.Col + 1];
-        var tileSouth = Tiles[tile.Row - 1, tile.Col];
-        var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
-
-        if (horizontal)
-        {
-            SetConnectionActive(tile, tileSouth, false);
-            SetConnectionActive(tileEast, tileSouth, false);
-            SetConnectionActive(tileEast, tileSoutheast, false);
-        }
-        else
-        {
-            SetConnectionActive(tile, tileEast, false);
-            SetConnectionActive(tile, tileSoutheast, false);
-            SetConnectionActive(tileSouth, tileSoutheast, false);
-        }
-
-        var wall = GetNewWall();
-        wall.name = Names.Wall_;
-        wall.transform.SetParent(WallsTransform);
-        wall.Tile = tile;
-        wall.Horizontal = horizontal;
-        wall.Free = false;
-        Walls.Add(wall);
-
-        Moves.Push(new PlaceWall(tile, horizontal));
-        return true;
-    }
-
-    bool UndoMove()
-    {
-        var lastMove = Moves.Peek();
-
-        if (lastMove.GetType() == typeof(MovePawn))
-        {
-            var move = lastMove as MovePawn;
-            MovePawnTo(move.Pawn, move.Source);
-        }
-        else if (lastMove.GetType() == typeof(PlaceWall))
-        {
-            var move = lastMove as PlaceWall;
-            RemoveWall(move.Tile, move.Horizontal);
-        }
-
-        PreviousTurn();
-
-        return true;
     }
 
     void RemoveWall(Tile tile, bool horizontal)
@@ -609,6 +528,135 @@ public class GameBoard : MonoBehaviour
 //
 //            return true;
 //        }
+        return false;
+    }
+
+    public List<Move> GetPossibleMoves()
+    {
+        var moves = new List<Move>();
+        var currentPlayerPawn = Players[CurrentPlayer].Pawn;
+
+        // Move pawn
+        foreach (var edge in currentPlayerPawn.Tile.Edges)
+        {
+            var neighbor = edge.GetNeighborOf(currentPlayerPawn.Tile);
+            if (neighbor.CanMoveTo(currentPlayerPawn.Tile))
+                moves.Add(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
+        }
+
+        // Place horizontal walls
+
+        // Place vertical walls
+
+        return moves;
+    }
+
+    public void NextTurn()
+    {
+        RemoveTemporaryEdges();
+
+        CurrentPlayer = GetNextPlayer();
+
+        for (var i = 0; i < Players.Count; i++)
+        {
+            if (i != CurrentPlayer)
+            {
+                CreateTemporaryEdges(Players[i].Pawn.Tile);
+            }
+        }
+    }
+
+    public void PreviousTurn()
+    {
+        RemoveTemporaryEdges();
+
+        CurrentPlayer = GetPreviousPlayer();
+
+        for (var i = 0; i < Players.Count; i++)
+        {
+            if (i != CurrentPlayer)
+            {
+                CreateTemporaryEdges(Players[i].Pawn.Tile);
+            }
+        }
+    }
+        
+    public bool MovePawnTo(Pawn pawn, Tile dest)
+    {
+        if (!dest.CanMoveTo(pawn.Tile))
+            return false;
+
+        var src = pawn.Tile;
+        src.Occupied = false;
+        dest.Occupied = true;
+        pawn.Tile = dest;
+
+        Moves.Push(new MovePawn(pawn, src, dest));
+        return true;
+    }
+
+    public bool CreateWall(Tile tile, bool horizontal)
+    {
+        if (!CanPlaceWall(tile, horizontal))
+            return false;
+
+        var tileEast = Tiles[tile.Row, tile.Col + 1];
+        var tileSouth = Tiles[tile.Row - 1, tile.Col];
+        var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
+
+        if (horizontal)
+        {
+            SetConnectionActive(tile, tileSouth, false);
+            SetConnectionActive(tileEast, tileSouth, false);
+            SetConnectionActive(tileEast, tileSoutheast, false);
+        }
+        else
+        {
+            SetConnectionActive(tile, tileEast, false);
+            SetConnectionActive(tile, tileSoutheast, false);
+            SetConnectionActive(tileSouth, tileSoutheast, false);
+        }
+
+        var wall = GetNewWall();
+        wall.name = Names.Wall_;
+        wall.transform.SetParent(WallsTransform);
+        wall.Tile = tile;
+        wall.Horizontal = horizontal;
+        wall.Free = false;
+        Walls.Add(wall);
+
+        Moves.Push(new PlaceWall(tile, horizontal));
+        return true;
+    }
+
+    public bool UndoMove()
+    {
+        var lastMove = Moves.Peek();
+
+        if (lastMove.GetType() == typeof(MovePawn))
+        {
+            var move = lastMove as MovePawn;
+            MovePawnTo(move.Pawn, move.Source);
+        }
+        else if (lastMove.GetType() == typeof(PlaceWall))
+        {
+            var move = lastMove as PlaceWall;
+            RemoveWall(move.Tile, move.Horizontal);
+        }
+
+        PreviousTurn();
+
+        return true;
+    }
+
+    public bool IsGameOver()
+    {
+        foreach (var player in Players)
+        {
+            if (player.Pawn.Tile.Row == player.ObjectiveRow)
+                return true;
+        }
+
         return false;
     }
 }

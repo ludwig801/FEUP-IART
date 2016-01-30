@@ -7,14 +7,5 @@ public class Player : MonoBehaviour
     public Color Color;
     public List<Wall> Walls;
     public Pawn Pawn;
-
-    void Start()
-    {
-	
-    }
-
-    void Update()
-    {
-	
-    }
+    public int ObjectiveRow;
 }
