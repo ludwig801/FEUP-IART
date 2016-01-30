@@ -32,9 +32,11 @@ public class GameBoard : MonoBehaviour
     [Range(-1, 1)]
     public int CurrentPlayer;
     public Stack<Move> Moves;
+    public Move.Types MoveType;
 
-    Dictionary<KeyCode, bool> KeysPressed;
-    bool _wallIsHorizontal;
+    Dictionary<KeyCode, bool> KeyUp;
+    Wall _referenceWall;
+    Tile _tileHover;
 
     public int Border
     {
@@ -52,8 +54,13 @@ public class GameBoard : MonoBehaviour
     void Start()
     {
         Moves = new Stack<Move>();
-        KeysPressed = new Dictionary<KeyCode, bool>();
-        _wallIsHorizontal = true;
+        KeyUp = new Dictionary<KeyCode, bool>();
+
+        _referenceWall = GetNewWall();
+        Walls.Remove(_referenceWall);
+        _referenceWall.Free = false;
+        _referenceWall.name = "Reference Wall";
+        _referenceWall.Tile = null;
 
         CreateTiles();
         CreateEdges();
@@ -66,15 +73,19 @@ public class GameBoard : MonoBehaviour
     {
         VisualBoard.localScale = new Vector3((Size * 1.5f) * (TileSize + TileSpacingFactor), (Size * 1.5f) * (TileSize + TileSpacingFactor), 1);
 
-        KeysPressed[KeyCode.LeftControl] = Input.GetKey(KeyCode.LeftControl);
-        KeysPressed[KeyCode.Escape] = Input.GetKey(KeyCode.Escape);
-        if (Input.GetAxis("Mouse ScrollWheel") != 0)
-            _wallIsHorizontal = !_wallIsHorizontal;
+        KeyUp[KeyCode.Tab] = Input.GetKeyUp(KeyCode.Tab);
+        KeyUp[KeyCode.Escape] = Input.GetKeyUp(KeyCode.Escape);
 
-        if (KeysPressed[KeyCode.Escape])
-        {
+        if (KeyUp[KeyCode.Tab])
+            MoveType = Move.GetNextType(MoveType);
+
+        if (Input.GetAxis("Mouse ScrollWheel") != 0)
+            _referenceWall.Horizontal = !_referenceWall.Horizontal;
+
+        if (KeyUp[KeyCode.Escape])
             Application.Quit();
-        }
+
+        _referenceWall.Tile = (MoveType == Move.Types.PlaceWall && CanPlaceWall(_tileHover, _referenceWall.Horizontal)) ? _tileHover : null;
     }
 
     void CreateTiles()
@@ -127,7 +138,7 @@ public class GameBoard : MonoBehaviour
             Players[i].ObjectiveRow = Mathf.Max(Size - i * Size - 1, 0);
         }
     }
-       
+
     void CreateEdge(Tile src, Tile dest)
     {
         foreach (Edge edge in Edges)
@@ -177,7 +188,7 @@ public class GameBoard : MonoBehaviour
         // Else create a new and add to the pool
         var newEdge = GameObject.Instantiate(EdgePrefab).GetComponent<Edge>();
         newEdge.transform.SetParent(EdgesTransform);
-        newEdge.name = Names.Edges;
+        newEdge.name = Names.Edge_;
         Edges.Add(newEdge);
 
         return newEdge;
@@ -228,18 +239,30 @@ public class GameBoard : MonoBehaviour
         return previous;
     }
 
-    public void OnTileClicked(Tile tile, PointerEventData eventData)
+    public void OnAction(Tile tile)
     {
-        if (KeysPressed[KeyCode.LeftControl])
+        if (MoveType == Move.Types.PlaceWall)
         {
-            if (CreateWall(tile, _wallIsHorizontal))
+            if (CreateWall(tile, _referenceWall.Horizontal))
                 NextTurn();
+            else
+                Debug.Log("Failed to create wall!");
         }
-        else
+        else if (MoveType == Move.Types.MovePawn)
         {
             if (MovePawnTo(Players[CurrentPlayer].Pawn, tile))
                 NextTurn();
         }
+    }
+
+    public void OnTileEnter(Tile Tile)
+    {
+        _tileHover = Tile;
+    }
+
+    public void OnTileExit(Tile Tile)
+    {
+        _tileHover = null;
     }
 
     public bool PlayMove(Move move)
@@ -341,7 +364,10 @@ public class GameBoard : MonoBehaviour
 
     bool CanPlaceWall(Tile tile, bool horizontal)
     {
-        if (!IsBoardPosition(tile.Row + 1, tile.Col + 1))
+        if (tile == null)
+            return false;
+        
+        if (!IsBoardPosition(tile.Row - 1, tile.Col + 1))
             return false;
         
         if (horizontal)
@@ -555,6 +581,8 @@ public class GameBoard : MonoBehaviour
     {
         RemoveTemporaryEdges();
 
+        _referenceWall.Tile = null;
+
         CurrentPlayer = GetNextPlayer();
 
         for (var i = 0; i < Players.Count; i++)
@@ -580,7 +608,7 @@ public class GameBoard : MonoBehaviour
             }
         }
     }
-        
+
     public bool MovePawnTo(Pawn pawn, Tile dest)
     {
         if (!dest.CanMoveTo(pawn.Tile))
@@ -597,6 +625,9 @@ public class GameBoard : MonoBehaviour
 
     public bool CreateWall(Tile tile, bool horizontal)
     {
+        if (tile == null)
+            return false;
+
         if (!CanPlaceWall(tile, horizontal))
             return false;
 

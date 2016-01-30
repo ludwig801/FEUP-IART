@@ -5,6 +5,7 @@
 
     public PlaceWall(Tile where, bool isHorizontal)
     {
+        Type = Types.PlaceWall;
         Tile = where;
         Horizontal = isHorizontal;
     }

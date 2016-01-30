@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 
-public class Tile : MonoBehaviour, IPointerClickHandler
+public class Tile : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     public List<Edge> Edges;
     public int Row, Col;
@@ -60,7 +60,17 @@ public class Tile : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        GameBoard.Instance.OnTileClicked(this, eventData);
+        GameBoard.Instance.OnAction(this);
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        GameBoard.Instance.OnTileEnter(this);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        GameBoard.Instance.OnTileExit(this);
     }
 
     public override string ToString()
