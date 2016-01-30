@@ -14,7 +14,7 @@ public abstract class Names
 	public const string Player_ = "Player ";
 	public const string Walls = "Walls";
 	public const string Wall_ = "Wall_";
-	public const string Links = "Links";
+	public const string Edges = "Links";
     public const string SavePath_ = "Statistics/Save_";
     public const string SaveWeightsPath_ = "Statistics/Weights_";
     public const string SaveExt = ".sav";

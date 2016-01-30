@@ -1,15 +1,16 @@
 ﻿<Properties StartupItem="Assembly-CSharp.csproj">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="Unity.Instance.Unity Editor" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\Tester.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\UIManager.cs">
     <Files>
-      <File FileName="Assets\Scripts\GameManager.cs" Line="86" Column="25" />
-      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\GameAI\Move.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\Tile.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\BoardTile.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="37" Column="9" />
-      <File FileName="Assets\Scripts\Tester.cs" Line="102" Column="1" />
-      <File FileName="Assets\Editor\GameManagerEditor.cs" Line="34" Column="55" />
+      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="17" Column="7" />
+      <File FileName="Assets\Scripts\Player.cs" Line="8" Column="29" />
+      <File FileName="Assets\Scripts\Board\Tile.cs" Line="123" Column="1" />
+      <File FileName="Assets\Scripts\UIManager.cs" Line="20" Column="3" />
+      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="8" Column="3" />
+      <File FileName="Assets\Scripts\Board\Wall.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\Board\Pawn.cs" Line="1" Column="1" />
+      <File FileName="Assets\Scripts\Board\Edge.cs" Line="22" Column="22" />
+      <File FileName="Assets\Scripts\GameManager.cs" Line="5" Column="1" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

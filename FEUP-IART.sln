@@ -1,11 +1,7 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2008
 
-Project("{1A47C9E4-E07D-5BF2-51F6-95B8CB9916A5}") = "FEUP-IART", "Assembly-CSharp-firstpass.csproj", "{445F29E1-BDDB-41A5-F71B-F5EE0A5B6CB6}"
-EndProject
 Project("{1A47C9E4-E07D-5BF2-51F6-95B8CB9916A5}") = "FEUP-IART", "Assembly-CSharp.csproj", "{D18371EA-7E3C-2874-0575-B435A8F528E4}"
-EndProject
-Project("{1A47C9E4-E07D-5BF2-51F6-95B8CB9916A5}") = "FEUP-IART", "Assembly-CSharp-Editor.csproj", "{17E66B97-868A-68AE-A574-A6319172A6F8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,18 +9,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{445F29E1-BDDB-41A5-F71B-F5EE0A5B6CB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{445F29E1-BDDB-41A5-F71B-F5EE0A5B6CB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{445F29E1-BDDB-41A5-F71B-F5EE0A5B6CB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{445F29E1-BDDB-41A5-F71B-F5EE0A5B6CB6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D18371EA-7E3C-2874-0575-B435A8F528E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D18371EA-7E3C-2874-0575-B435A8F528E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D18371EA-7E3C-2874-0575-B435A8F528E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D18371EA-7E3C-2874-0575-B435A8F528E4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{17E66B97-868A-68AE-A574-A6319172A6F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{17E66B97-868A-68AE-A574-A6319172A6F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{17E66B97-868A-68AE-A574-A6319172A6F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{17E66B97-868A-68AE-A574-A6319172A6F8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

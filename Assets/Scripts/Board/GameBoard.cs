@@ -1,35 +1,40 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.EventSystems;
 
 public class GameBoard : MonoBehaviour
 {
-    public Transform TilesTransform, LinksTransform, VisualBoardTransform;
-    public GameObject tilePrefab, linkPrefab;
-
-    [Range(1, 5)]
-    public int tileSize;
-    [Range(1, 5)]
-    public float tileSpacing;
-    public int rows;
-    public int columns;
-    public Tile[,] Tiles;
-    public List<Link> Links;
-
-    // Properties
-    public int Size
+    public static GameBoard Instance
     {
         get
         {
-            return rows;
-        }
-
-        set
-        {
-            rows = value;
-            columns = value;
+            return _instance;
         }
     }
+
+    static GameBoard _instance;
+
+    public Transform TilesTransform, EdgesTransform, VisualBoard, WallsTransform;
+    public GameObject TilePrefab, EdgePrefab, WallPrefab;
+    [Range(9, 9)]
+    public int Size;
+    [Range(1, 5)]
+    public int TileSize;
+    [Range(0, 1)]
+    public float TileSpacingFactor;
+    public Tile[,] Tiles;
+    [HideInInspector]
+    public List<Edge> Edges;
+    [HideInInspector]
+    public List<Wall> Walls;
+    public List<Player> Players;
+    [Range(-1, 1)]
+    public int CurrentPlayer;
+    public Stack<Move> Moves;
+
+    Dictionary<KeyCode, bool> KeysPressed;
+    bool _wallIsHorizontal;
 
     public int Border
     {
@@ -39,442 +44,571 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    public void Init()
+    void Awake()
     {
-        GenerateBoard();
-        CalcNeighbors();
+        _instance = this;
     }
 
-    public void Reset()
+    void Start()
     {
-        CalcNeighbors();
+        Moves = new Stack<Move>();
+        KeysPressed = new Dictionary<KeyCode, bool>();
+        _wallIsHorizontal = true;
 
-        for (int i = 0; i < rows; i++)
+        CreateTiles();
+        CreateEdges();
+        PlacePawns();
+
+        NextTurn();
+    }
+
+    void Update()
+    {
+        VisualBoard.localScale = new Vector3((Size * 1.5f) * (TileSize + TileSpacingFactor), (Size * 1.5f) * (TileSize + TileSpacingFactor), 1);
+
+        KeysPressed[KeyCode.LeftControl] = Input.GetKey(KeyCode.LeftControl);
+        KeysPressed[KeyCode.Escape] = Input.GetKey(KeyCode.Escape);
+        if (Input.GetAxis("Mouse ScrollWheel") != 0)
+            _wallIsHorizontal = !_wallIsHorizontal;
+
+        if (KeysPressed[KeyCode.Escape])
         {
-            for (int j = 0; j < columns; j++)
+            Application.Quit();
+        }
+    }
+
+    void CreateTiles()
+    {
+        Tiles = new Tile[Size, Size];
+
+        var tileSpacing = (TileSize + TileSpacingFactor * TileSize);
+        var offset = -(tileSpacing * 0.5f * (Size - 1));
+
+        for (var row = 0; row < Size; row++)
+        {
+            for (var col = 0; col < Size; col++)
             {
-                Tiles[i, j].Reset();
+                var newTile = Instantiate(TilePrefab).GetComponent<Tile>();
+                newTile.name = "Tile_" + row + "_" + col;
+                newTile.transform.SetParent(transform.FindChild(Names.Tiles));
+                newTile.transform.localScale = new Vector3(TileSize, newTile.transform.localScale.y, TileSize);
+                newTile.transform.position = new Vector3(col * tileSpacing + offset, 0, row * tileSpacing + offset);
+                newTile.Row = row;
+                newTile.Col = col;
+
+                Tiles[row, col] = newTile;
             }
         }
     }
 
-    void GenerateBoard()
+    void CreateEdges()
     {
-        if (Tiles == null)
+        for (int row = 0; row < Size; row++)
         {
-            Tiles = new Tile[rows, columns];
-        }
-
-        float spacing = tileSpacing * tileSize;
-
-        for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < columns; j++)
+            for (int col = 0; col < Size; col++)
             {
-                Vector3 position = new Vector3(j * (tileSize + spacing), 0, i * (tileSize + spacing));
-                GameObject instance = GameObject.Instantiate(tilePrefab, position, Quaternion.identity) as GameObject;
-                instance.name = "Tile_" + (i * columns + j);
-                instance.transform.SetParent(transform.FindChild(Names.Tiles));
-                instance.transform.localScale = new Vector3(tileSize, instance.transform.localScale.y, tileSize);
-                Tiles[i, j] = instance.GetComponent<Tile>();
-                Tiles[i, j].row = i;
-                Tiles[i, j].col = j;
-                Tiles[i, j].Init();
+                var tile = Tiles[row, col];
+                if (col < Border)
+                    CreateEdge(tile, Tiles[row, col + 1]);
+                if (row < Border)
+                    CreateEdge(tile, Tiles[row + 1, col]);
             }
         }
     }
 
-    void CalcNeighbors()
+    void PlacePawns()
     {
-        var border = Size - 1;
-
-        for (int i = 0; i < rows; i++)
+        var col = Size / 2;
+        for (var i = 0; i < Players.Count; i++)
         {
-            for (int j = 0; j < columns; j++)
-            {
-                if (j < border)
-                {
-                    RemoveLinkAt(Tiles[i, j], Tiles[i, j + 1]);
-                }
-                if (i < border)
-                {
-                    RemoveLinkAt(Tiles[i, j], Tiles[i + 1, j]);
-                }
-            }
+            var row = Mathf.Max(i * Size - 1, 0);
+            Players[i].Pawn.Tile = Tiles[row, col];
+            Players[i].Pawn.Tile.Occupied = true;
         }
+    }
 
-        for (int i = 0; i < rows; i++)
+    void NextTurn()
+    {
+        RemoveTemporaryEdges();
+
+        CurrentPlayer = GetNextPlayer();
+
+        for (var i = 0; i < Players.Count; i++)
         {
-            for (int j = 0; j < columns; j++)
+            if (i != CurrentPlayer)
             {
-                if (j < border)
-                {
-                    AddLinkAt(Tiles[i, j], Tiles[i, j + 1]);
-                }
-                if (i < border)
-                {
-                    AddLinkAt(Tiles[i, j], Tiles[i + 1, j]);
-                }
+                CreateTemporaryEdges(Players[i].Pawn.Tile);
             }
         }
     }
 
-    void AddLinkAt(Tile a, Tile b)
+    void PreviousTurn()
     {
-        if (a.Neighbor(b) || b.Neighbor(a))
+        RemoveTemporaryEdges();
+
+        CurrentPlayer = GetPreviousPlayer();
+
+        for (var i = 0; i < Players.Count; i++)
         {
-            return;
-        }
-
-        a.neighbors.Add(b);
-        b.neighbors.Add(a);
-
-        Link link = GetLink();
-        link.Visible = true;
-        link.SetTiles(a, b);
-    }
-
-    void RemoveLinkAt(Tile a, Tile b)
-    {
-        Link link = GetLinkAt(a, b);
-        if (link != null)
-        {
-            link.Visible = false;
-            link.RemoveTiles();
-        }
-
-        a.RemoveNeighbor(b);
-        b.RemoveNeighbor(a);
-    }
-
-    Link GetLink()
-    {
-        // If an available Link already exists in the pool
-        for (int i = 0; i < Links.Count; i++)
-        {
-            if (Links[i].Free)
+            if (i != CurrentPlayer)
             {
-                return Links[i];
+                CreateTemporaryEdges(Players[i].Pawn.Tile);
             }
+        }
+    }
+
+    int GetNextPlayer()
+    {
+        var next = CurrentPlayer + 1;
+        next %= Players.Count;
+        return next;
+    }
+
+    int GetPreviousPlayer()
+    {
+        var previous = CurrentPlayer - 1;
+        if (previous < 0)
+            previous = Players.Count - previous;
+        return previous;
+    }
+
+    void CreateEdge(Tile src, Tile dest)
+    {
+        foreach (Edge edge in Edges)
+        {
+            if (edge.Connects(src, dest))
+                return;
+        }
+
+        Edge newEdge = GetNewEdge();
+        newEdge.A = src;
+        newEdge.B = dest;
+        newEdge.Active = true;
+        newEdge.Free = false;
+        src.Edges.Add(newEdge);
+        dest.Edges.Add(newEdge);
+    }
+
+    void RemoveEdge(Tile src, Tile dest)
+    {
+        foreach (var edge in Edges)
+        {
+            if (edge.Connects(src, dest))
+            {
+                RemoveEdge(edge);
+                return;
+            }
+        }
+    }
+
+    void RemoveEdge(Edge edge)
+    {
+        edge.A.Edges.Remove(edge);
+        edge.B.Edges.Remove(edge);
+        Edges.Remove(edge);
+        Destroy(edge.gameObject);
+    }
+
+    Edge GetNewEdge()
+    {
+        // If an available edge already exists in the pool
+        foreach (var edge in Edges)
+        {
+            if (edge.Free)
+                return edge;           
         }
 
         // Else create a new and add to the pool
-        GameObject instance = GameObject.Instantiate(linkPrefab, new Vector3(), Quaternion.identity) as GameObject;
-        instance.transform.SetParent(GameObject.Find(Names.Board).transform.FindChild(Names.Links));
-        Link newLink = instance.GetComponent<Link>();
-        newLink.Init();
-        Links.Add(newLink);
-        return newLink;
+        var newEdge = GameObject.Instantiate(EdgePrefab).GetComponent<Edge>();
+        newEdge.transform.SetParent(EdgesTransform);
+        newEdge.name = Names.Edges;
+        Edges.Add(newEdge);
+
+        return newEdge;
     }
 
-    Link GetLinkAt(Tile a, Tile b)
+    Wall GetNewWall()
     {
-        for (int i = 0; i < Links.Count; i++)
+        // If an available wall already exists in the pool
+        foreach (var wall in Walls)
         {
-            if (Links[i].TileA == a)
-            {
-                if (Links[i].TileB == b)
-                {
-                    return Links[i];
-                }
-            }
-            else if (Links[i].TileA == b)
-            {
-                if (Links[i].TileB == a)
-                {
-                    return Links[i];
-                }
-            }
+            if (wall.Free)
+                return wall;           
         }
 
-        return null;
+        // Else create a new and add to the pool
+        var newWall = GameObject.Instantiate(WallPrefab).GetComponent<Wall>();
+        newWall.transform.SetParent(WallsTransform);
+        newWall.name = Names.Wall_;
+        Walls.Add(newWall);
+
+        return newWall;        
     }
 
-    public Tile GetTileAt(Vector3 position)
+    void SetConnectionActive(Tile src, Tile dest, bool active)
     {
-        foreach (Tile tile in Tiles)
+        foreach (var edge in Edges)
         {
-            if (tile.transform.position.x == position.x && tile.transform.position.z == position.z)
+            if (edge.Connects(src, dest))
             {
-                return tile;
+                edge.Active = active;
+                return;
             }
         }
-
-        return null;
     }
 
-    public Tile GetTileAt(int row, int col)
+    public void OnTileClicked(Tile tile, PointerEventData eventData)
     {
-        return Tiles[row, col];
+        if (KeysPressed[KeyCode.LeftControl])
+        {
+            if (CreateWall(tile, _wallIsHorizontal))
+                NextTurn();
+        }
+        else
+        {
+            if (MovePawnTo(Players[CurrentPlayer].Pawn, tile))
+                NextTurn();
+        }
     }
 
-    public bool IsBoardPosition(int row, int col)
+    bool IsBoardPosition(int row, int col)
     {
-        return (row >= 0) &&
-        (row < Size) &&
-        (col >= 0) &&
-        (col < Size);
+        return (row >= 0) && (row < Size) &&
+        (col >= 0) && (col < Size);
     }
 
-    public void MovePawnTo(Pawn pawn, int row, int col)
+    bool MovePawnTo(Pawn pawn, Tile dest)
     {
-        pawn.Tile.RemovePawn();
-        pawn.Tile = Tiles[row, col];
+        if (!dest.CanMoveTo(pawn.Tile))
+            return false;
+
+        var src = pawn.Tile;
+        src.Occupied = false;
+        dest.Occupied = true;
+        pawn.Tile = dest;
+
+        Moves.Push(new MovePawn(pawn, src, dest));
+        return true;
     }
 
-    public void PutWallAt(Wall wall, int row, int col, bool horizontal)
+    bool CreateWall(Tile tile, bool horizontal)
     {
-        Tile tile = GetTileAt(row, col);
-        Tile right = GetTileAt(tile.row, tile.col + 1);
-        Tile below = GetTileAt(tile.row - 1, tile.col);
-        Tile rightBelow = GetTileAt(tile.row - 1, tile.col + 1);
+        if (!CanPlaceWall(tile, horizontal))
+            return false;
+
+        var tileEast = Tiles[tile.Row, tile.Col + 1];
+        var tileSouth = Tiles[tile.Row - 1, tile.Col];
+        var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
 
         if (horizontal)
         {
-            RemoveLinkAt(tile, below);
-            RemoveLinkAt(right, rightBelow);
-            RemoveLinkAt(right, below);
+            SetConnectionActive(tile, tileSouth, false);
+            SetConnectionActive(tileEast, tileSouth, false);
+            SetConnectionActive(tileEast, tileSoutheast, false);
         }
         else
         {
-            RemoveLinkAt(tile, right);
-            RemoveLinkAt(below, rightBelow);
-            RemoveLinkAt(tile, rightBelow);
+            SetConnectionActive(tile, tileEast, false);
+            SetConnectionActive(tile, tileSoutheast, false);
+            SetConnectionActive(tileSouth, tileSoutheast, false);
         }
 
-        wall.Tile = Tiles[row, col];
+        var wall = GetNewWall();
+        wall.name = Names.Wall_;
+        wall.transform.SetParent(WallsTransform);
+        wall.Tile = tile;
         wall.Horizontal = horizontal;
+        wall.Free = false;
+        Walls.Add(wall);
+
+        Moves.Push(new PlaceWall(tile, horizontal));
+        return true;
     }
 
-    public void RemoveWall(int row, int col)
+    bool UndoMove()
     {
-        Tile tile = GetTileAt(row, col);
-        Wall wall = tile.Wall;
+        var lastMove = Moves.Peek();
 
-        Tile right = GetTileAt(tile.row, tile.col + 1);
-        Tile below = GetTileAt(tile.row - 1, tile.col);
-        Tile rightBelow = GetTileAt(tile.row - 1, tile.col + 1);
-
-        if (wall.Horizontal)
+        if (lastMove.GetType() == typeof(MovePawn))
         {
-            AddLinkAt(tile, below);
-            AddLinkAt(right, rightBelow);
+            var move = lastMove as MovePawn;
+            MovePawnTo(move.Pawn, move.Source);
+        }
+        else if (lastMove.GetType() == typeof(PlaceWall))
+        {
+            var move = lastMove as PlaceWall;
+            RemoveWall(move.Tile, move.Horizontal);
+        }
+
+        PreviousTurn();
+
+        return true;
+    }
+
+    void RemoveWall(Tile tile, bool horizontal)
+    {
+        var tileEast = Tiles[tile.Row, tile.Col + 1];
+        var tileSouth = Tiles[tile.Row - 1, tile.Col];
+        var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
+
+        if (horizontal)
+        {
+            SetConnectionActive(tile, tileSouth, true);
+            SetConnectionActive(tileEast, tileSouth, true);
+            SetConnectionActive(tileEast, tileSoutheast, true);
         }
         else
         {
-            AddLinkAt(tile, right);
-            AddLinkAt(below, rightBelow);
+            SetConnectionActive(tile, tileSouth, true);
+            SetConnectionActive(tile, tileSoutheast, true);
+            SetConnectionActive(tileSouth, tileSoutheast, true);
         }
 
-        tile.RemoveWall();
-    }
-
-    public void CreateTileTempLinks(Tile tile)
-    {
-        List<Tile> tiles = new List<Tile>();
-
-        foreach (Tile x in tile.neighbors)
+        foreach (var wall in Walls)
         {
-            if (Tile.Distance(tile, x) == 1)
+            if (wall.Tile == tile)
             {
-                tiles.Add(x);
-            }
-        }
-
-        foreach (Tile a in tiles)
-        {
-            foreach (Tile b in tiles)
-            {
-                if (!a.Equals(b))
-                {
-                    if (CanBeTempNeighbors(a, b, tile))
-                    {
-                        AddLinkAt(a, b);
-                    }
-                }
+                Walls.Remove(wall);
+                Destroy(wall.gameObject);
+                return;
             }
         }
     }
 
-    public void RemoveTileTempLinks(Tile tile)
+    void CreateTemporaryEdges(Tile tile)
     {
-        List<Tile> tiles = new List<Tile>();
+        var neighbors = new List<Tile>();
 
-        foreach (Tile x in tile.neighbors)
+        foreach (var edge in tile.Edges)
         {
-            if (Tile.Distance(tile, x) == 1)
-            {
-                tiles.Add(x);
-            }
+            if (edge.Active)
+                neighbors.Add(edge.GetNeighborOf(tile));
         }
 
-        foreach (Tile a in tiles)
+        for (var i = 0; i < neighbors.Count - 1; i++)
         {
-            foreach (Tile b in tiles)
+            var neighborA = neighbors[i];
+            for (var j = i + 1; j < neighbors.Count; j++)
             {
-                if (!a.Equals(b))
-                {
-                    RemoveLinkAt(a, b);
-                }
+                var neighborB = neighbors[j];
+                if (!neighborA.IsNeighborOf(neighborB))
+                    CreateEdge(neighborA, neighborB);
             }
         }
     }
 
-    public bool CanBeTempNeighbors(Tile a, Tile b, Tile center)
+    void RemoveTemporaryEdges(Tile tile)
     {
-        if (Tile.SameRow(a, b))
+        for (var i = 0; i < tile.Edges.Count; i++)
         {
-            Tile left = a.Leftside(b) ? a : b;
-            Tile right = a.Leftside(b) ? b : a;
+            var edge = tile.Edges[i];
+            if (Tile.Distance(tile, edge.GetNeighborOf(tile)) > 1)
+                RemoveEdge(edge);
+        }
+    }
 
-            while (!left.Equals(right))
+    void RemoveTemporaryEdges()
+    {
+        for (var i = 0; i < Edges.Count; i++)
+        {
+            var edge = Edges[i];
+            if (Tile.Distance(edge.A, edge.B) > 1)
             {
-                if (left.HasWall && left.Wall.Vertical)
-                {
+                RemoveEdge(edge);
+                i--;
+            }              
+        }
+    }
+
+    bool CanPlaceWall(Tile tile, bool horizontal)
+    {
+        if (!IsBoardPosition(tile.Row + 1, tile.Col + 1))
+            return false;
+        
+        if (horizontal)
+        {
+            foreach (var wall in Walls)
+            {
+                if (wall.Tile == tile)
                     return false;
-                }
-                
-                if (IsBoardPosition(left.row + 1, left.col))
-                {
-                    Tile above = Tiles[left.row + 1, left.col];
-                    if (above.HasWall && above.Wall.Vertical)
-                    {
-                        return false;
-                    }
-                }
-
-                left = Tiles[left.row, left.col + 1];
-            }
-
-            return true;
-        }
-        else if (Tile.SameCol(a, b))
-        {
-            Tile below = a.Below(b) ? a : b;
-            Tile above = a.Below(b) ? b : a;
-
-            while (!above.Equals(below))
-            {
-                if (above.HasWall && above.Wall.Horizontal)
-                {
+                else if (wall.Tile.LeftTo(tile) && wall.Horizontal)
                     return false;
-                }
-
-                if (IsBoardPosition(above.row, above.col - 1))
-                {
-                    Tile left = Tiles[above.row, above.col - 1];
-                    if (left.HasWall && left.Wall.Horizontal)
-                    {
-                        return false;
-                    }
-                }
-
-                above = Tiles[above.row - 1, above.col];
+                else if (wall.Tile.RightTo(tile) && wall.Horizontal)
+                    return false;
             }
-
-            return true;
         }
         else
         {
-            Tile comp = a.Above(b) ? a : b;
-            Tile notComp = b.Equals(comp) ? a : b;
-
-            if (comp.Leftside(notComp))
+            foreach (var wall in Walls)
             {
-                if (comp.Above(center))
-                {
-                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
-                    {
-                        return false;
-                    }
-                    else if (center.HasWall && center.Wall.Vertical)
-                    {
-                        return false;
-                    }
-                    else if (IsBoardPosition(comp.row, comp.col - 1))
-                    {
-                        Tile left = Tiles[comp.row, comp.col - 1];
-                        if (left.HasWall && left.Wall.Horizontal)
-                        {
-                            return false;
-                        }
-                    }
-                }
-                else if (comp.Leftside(center))
-                {
-                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
-                    {
-                        return false;
-                    }
-                    else if (center.HasWall && center.Wall.Horizontal)
-                    {
-                        return false;
-                    }
-                    else if (IsBoardPosition(comp.row + 1, comp.col))
-                    {
-                        Tile above = Tiles[comp.row + 1, comp.col];
-                        if (above.HasWall && above.Wall.Vertical)
-                        {
-                            return false;
-                        }
-                    }
-                }
-                else
-                {
+                if (wall.Tile == tile)
                     return false;
-                }
-            }
-            else
-            { // comp rightside to notComp
-                if (comp.Above(center))
-                {
-                    if (comp.HasWall && comp.Wall.Horizontal)
-                    {
-                        return false;
-                    }
-                    else if (notComp.HasWall && notComp.Wall.Vertical)
-                    {
-                        return false;
-                    }
-                    else if (IsBoardPosition(comp.row, comp.col - 1))
-                    {
-                        Tile left = Tiles[comp.row, comp.col - 1];
-                        if (left.HasWall && (left.Wall.Vertical || left.Wall.Horizontal))
-                        {
-                            return false;
-                        }
-                    }
-                }
-                else if (comp.Rightside(center))
-                {
-                    if (center.HasWall && (center.Wall.Horizontal || center.Wall.Vertical))
-                    {
-                        return false;
-                    }
-                    else if (IsBoardPosition(comp.row, comp.col - 2))
-                    {
-                        Tile left = Tiles[comp.row, comp.col - 2];
-                        if (left.HasWall && left.Wall.Horizontal)
-                        {
-                            return false;
-                        }
-                    }
-                    else if (IsBoardPosition(comp.row + 1, comp.col - 1))
-                    {
-                        Tile left = Tiles[comp.row + 1, comp.col - 1];
-                        if (left.HasWall && left.Wall.Vertical)
-                        {
-                            return false;
-                        }
-                    }
-                }
-                else
-                {
+                else if (wall.Tile.AboveTo(tile) && !wall.Horizontal)
                     return false;
-                }
-            }
-
-            return true;
+                else if (wall.Tile.BelowTo(tile) && !wall.Horizontal)
+                    return false;
+            }           
         }
+
+        return true;
+    }
+
+    bool CanBeTemporaryNeighbors(Tile a, Tile b, Tile center)
+    {
+//        if (Tile.SameRow(a, b))
+//        {
+//            var left = a.Leftside(b) ? a : b;
+//            var right = a.Leftside(b) ? b : a;
+//
+//            while (!left.Equals(right))
+//            {
+//                if (left.HasWall && left.Wall.Vertical)
+//                {
+//                    return false;
+//                }
+//                
+//                if (IsBoardPosition(left.Row + 1, left.Col))
+//                {
+//                    var above = Tiles[left.Row + 1, left.Col];
+//                    if (above.HasWall && above.Wall.Vertical)
+//                    {
+//                        return false;
+//                    }
+//                }
+//
+//                left = Tiles[left.Row, left.Col + 1];
+//            }
+//
+//            return true;
+//        }
+//        else if (Tile.SameCol(a, b))
+//        {
+//            var below = a.Below(b) ? a : b;
+//            var above = a.Below(b) ? b : a;
+//
+//            while (!above.Equals(below))
+//            {
+//                if (above.HasWall && above.Wall.Horizontal)
+//                {
+//                    return false;
+//                }
+//
+//                if (IsBoardPosition(above.Row, above.Col - 1))
+//                {
+//                    Tile left = Tiles[above.Row, above.Col - 1];
+//                    if (left.HasWall && left.Wall.Horizontal)
+//                    {
+//                        return false;
+//                    }
+//                }
+//
+//                above = Tiles[above.Row - 1, above.Col];
+//            }
+//
+//            return true;
+//        }
+//        else
+//        {
+//            Tile comp = a.Above(b) ? a : b;
+//            Tile notComp = b.Equals(comp) ? a : b;
+//
+//            if (comp.Leftside(notComp))
+//            {
+//                if (comp.Above(center))
+//                {
+//                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
+//                    {
+//                        return false;
+//                    }
+//                    else if (center.HasWall && center.Wall.Vertical)
+//                    {
+//                        return false;
+//                    }
+//                    else if (IsBoardPosition(comp.Row, comp.Col - 1))
+//                    {
+//                        Tile left = Tiles[comp.Row, comp.Col - 1];
+//                        if (left.HasWall && left.Wall.Horizontal)
+//                        {
+//                            return false;
+//                        }
+//                    }
+//                }
+//                else if (comp.Leftside(center))
+//                {
+//                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
+//                    {
+//                        return false;
+//                    }
+//                    else if (center.HasWall && center.Wall.Horizontal)
+//                    {
+//                        return false;
+//                    }
+//                    else if (IsBoardPosition(comp.Row + 1, comp.Col))
+//                    {
+//                        Tile above = Tiles[comp.Row + 1, comp.Col];
+//                        if (above.HasWall && above.Wall.Vertical)
+//                        {
+//                            return false;
+//                        }
+//                    }
+//                }
+//                else
+//                {
+//                    return false;
+//                }
+//            }
+//            else
+//            { // comp rightside to notComp
+//                if (comp.Above(center))
+//                {
+//                    if (comp.HasWall && comp.Wall.Horizontal)
+//                    {
+//                        return false;
+//                    }
+//                    else if (notComp.HasWall && notComp.Wall.Vertical)
+//                    {
+//                        return false;
+//                    }
+//                    else if (IsBoardPosition(comp.Row, comp.Col - 1))
+//                    {
+//                        Tile left = Tiles[comp.Row, comp.Col - 1];
+//                        if (left.HasWall && (left.Wall.Vertical || left.Wall.Horizontal))
+//                        {
+//                            return false;
+//                        }
+//                    }
+//                }
+//                else if (comp.Rightside(center))
+//                {
+//                    if (center.HasWall && (center.Wall.Horizontal || center.Wall.Vertical))
+//                    {
+//                        return false;
+//                    }
+//                    else if (IsBoardPosition(comp.Row, comp.Col - 2))
+//                    {
+//                        Tile left = Tiles[comp.Row, comp.Col - 2];
+//                        if (left.HasWall && left.Wall.Horizontal)
+//                        {
+//                            return false;
+//                        }
+//                    }
+//                    else if (IsBoardPosition(comp.Row + 1, comp.Col - 1))
+//                    {
+//                        Tile left = Tiles[comp.Row + 1, comp.Col - 1];
+//                        if (left.HasWall && left.Wall.Vertical)
+//                        {
+//                            return false;
+//                        }
+//                    }
+//                }
+//                else
+//                {
+//                    return false;
+//                }
+//            }
+//
+//            return true;
+//        }
+        return false;
     }
 }

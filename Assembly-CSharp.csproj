@@ -45,34 +45,28 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+     <Compile Include="Assets\Scripts\Board\Edge.cs" />
      <Compile Include="Assets\Scripts\Board\GameBoard.cs" />
-     <Compile Include="Assets\Scripts\Board\Link.cs" />
+     <Compile Include="Assets\Scripts\Board\Move.cs" />
+     <Compile Include="Assets\Scripts\Board\MovePawn.cs" />
+     <Compile Include="Assets\Scripts\Board\Pawn.cs" />
+     <Compile Include="Assets\Scripts\Board\PlaceWall.cs" />
+     <Compile Include="Assets\Scripts\Board\Player.cs" />
      <Compile Include="Assets\Scripts\Board\Tile.cs" />
-     <Compile Include="Assets\Scripts\Counter.cs" />
+     <Compile Include="Assets\Scripts\Board\Wall.cs" />
      <Compile Include="Assets\Scripts\GameAI\Minimax.cs" />
      <Compile Include="Assets\Scripts\GameAI\MinimaxNode.cs" />
-     <Compile Include="Assets\Scripts\GameAI\Move.cs" />
-     <Compile Include="Assets\Scripts\GameManager.cs" />
-     <Compile Include="Assets\Scripts\GamePieces\Pawn.cs" />
-     <Compile Include="Assets\Scripts\GamePieces\Piece.cs" />
-     <Compile Include="Assets\Scripts\GamePieces\Wall.cs" />
+     <Compile Include="Assets\Scripts\Libraries\Counter.cs" />
      <Compile Include="Assets\Scripts\Libraries\Names.cs" />
      <Compile Include="Assets\Scripts\Libraries\NamesUI.cs" />
      <Compile Include="Assets\Scripts\Libraries\Tags.cs" />
-     <Compile Include="Assets\Scripts\Tester.cs" />
      <Compile Include="Assets\Scripts\UIManager.cs" />
-     <None Include="Assets\Standard Assets\CrossPlatformInput\CrossPlatformInputGuidelines.txt" />
-     <None Include="Assets\Standard Assets\Cameras\CameraGuidelines.txt" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>
  <Reference Include="UnityEngine.Networking">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/Networking/UnityEngine.Networking.dll</HintPath>
  </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="Assembly-CSharp-firstpass.csproj">
-      <Project>{445F29E1-BDDB-41A5-F71B-F5EE0A5B6CB6}</Project>      <Name>Assembly-CSharp-firstpass</Name>    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

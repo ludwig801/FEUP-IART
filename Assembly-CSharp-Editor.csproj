@@ -46,12 +46,6 @@
   </ItemGroup>
   <ItemGroup>
      <Compile Include="Assets\Editor\CrossPlatformInput\CrossPlatformInputInitialize.cs" />
-     <Compile Include="Assets\Editor\GameManagerEditor.cs" />
-     <Compile Include="Assets\Editor\LinkEditor.cs" />
-     <Compile Include="Assets\Editor\PawnEditor.cs" />
-     <Compile Include="Assets\Editor\TesterEditor.cs" />
-     <Compile Include="Assets\Editor\TileEditor.cs" />
-     <Compile Include="Assets\Editor\WallEditor.cs" />
      <None Include="Assets\Standard Assets\CrossPlatformInput\CrossPlatformInputGuidelines.txt" />
      <None Include="Assets\Standard Assets\Cameras\CameraGuidelines.txt" />
  <Reference Include="UnityEditor.Advertisements">
