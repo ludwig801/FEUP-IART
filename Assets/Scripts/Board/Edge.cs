@@ -3,31 +3,29 @@ using System.Collections.Generic;
 
 public class Edge : MonoBehaviour
 {
+    public Color ColorActive, ColorInactive;
+    [Range(0, 10)]
+    public int Speed;
+    [Range(0.1f, 1)]
+    public float Thickness;
     public Tile A, B;
     public bool Free, Active;
 
-    public MeshRenderer MeshRenderer
-    {
-        get
-        {
-            if (_meshRenderer == null)
-            {
-                _meshRenderer = GetComponent<MeshRenderer>();
-            }
-            return _meshRenderer;
-        }
-    }
+    Material _material;
 
-    MeshRenderer _meshRenderer;
+    void Start()
+    {
+        _material = GetComponent<MeshRenderer>().material;
+    }
 
     void Update()
     {
         transform.position = Vector3.Lerp(A.transform.position, B.transform.position, 0.5f);
         var delta = (B.transform.position - A.transform.position);
-        transform.localScale = new Vector3(0.4f, 0.5f * delta.magnitude, 0.4f);
+        transform.localScale = new Vector3(Thickness, 0.45f * delta.magnitude, Thickness);
         transform.localRotation = Quaternion.LookRotation(delta);
         transform.Rotate(new Vector3(1, 0, 0), 90);
-        MeshRenderer.material.color = Active ? Color.green : Color.red;
+        _material.color = Speed > 0 ? Color.Lerp(_material.color, Active ? ColorActive : ColorInactive, Speed * Time.deltaTime) : Active ? ColorActive : ColorInactive;
     }
 
     public bool Connects(Tile a, Tile b)

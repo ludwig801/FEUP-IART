@@ -8,19 +8,7 @@ public class Pawn : MonoBehaviour
     [Range(0, 10)]
     public int Speed;
 
-    public MeshRenderer MeshRenderer
-    {
-        get
-        {
-            if (_meshRenderer == null)
-            {
-                _meshRenderer = GetComponent<MeshRenderer>();
-            }
-            return _meshRenderer;
-        }
-    }
-
-    MeshRenderer _meshRenderer;
+    Vector3 _offset;
 
     public bool HasTile
     {
@@ -30,21 +18,18 @@ public class Pawn : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        _offset = new Vector3(0, 0.5f, 0);
+        GetComponent<MeshRenderer>().material.color = Player.Color;
+    }
+
     void Update()
     {
-        MeshRenderer.enabled = HasTile;
         if (HasTile)
-        {
-            MeshRenderer.material.color = Player.Color;
-            if (Speed == 0)
-            {
-                transform.position = Tile.transform.position + new Vector3(0, 0.5f, 0); 
-            }
-            else
-            {
-                var objective = Tile.transform.position + new Vector3(0, 0.5f, 0);
-                transform.position = Vector3.Lerp(transform.position, objective, Speed * Time.deltaTime);
-            }
+        {            
+            var objective = Tile.transform.position + _offset;
+            transform.position = Speed > 0 ? Vector3.Lerp(transform.position, objective, Speed * Time.deltaTime) : objective;
         }
     }
 }
