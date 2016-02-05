@@ -1,4 +1,4 @@
-﻿public interface IAlgorithm
+﻿public interface IBestMoveAlgorithm
 {
     void RunAlgorithm();
 

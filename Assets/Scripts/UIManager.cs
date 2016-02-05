@@ -33,21 +33,30 @@ public class UIManager : MonoBehaviour
         var sliderVal = (int)DifficultySlider.value;
         GameBoard.Minimax.Depth = sliderVal + 1;
         DifficultyLabel.text = "Level: " + Difficulties[sliderVal];
+        GameBoard.StartingPlayer = Player1Starts.isOn ? 0 : 1;
 
         if (GameBoard.Ongoing)
         {
-            PlayerColor.color = GameBoard.Players[GameBoard.CurrentPlayer].Color;
-            Player.text = "Player " + (GameBoard.CurrentPlayer + 1);
-            switch (GameBoard.MoveType)
+            var CurrentPlayer = GameBoard.Players[GameBoard.CurrentPlayer];
+            PlayerColor.color = CurrentPlayer.Color;
+            Player.text = "Player " + (GameBoard.CurrentPlayer + 1) + (CurrentPlayer.IsCpu ? " [CPU]" : "");
+            if (!CurrentPlayer.IsCpu)
             {
-                case Move.Types.MovePawn:
-                    InfoText.text = "Move your pawn...";
-                    break;
+                switch (GameBoard.MoveType)
+                {
+                    case Move.Types.MovePawn:
+                        InfoText.text = "Move your pawn...";
+                        break;
 
-                case Move.Types.PlaceWall:
-                    InfoText.text = "Place your wall...";
-                    break;
-            }  
+                    case Move.Types.PlaceWall:
+                        InfoText.text = "Place your wall...";
+                        break;
+                }  
+            }
+            else
+            {
+                InfoText.text = "CPU move...";
+            }
         }
         else
         {
@@ -55,10 +64,5 @@ public class UIManager : MonoBehaviour
             Player.text = "No Player Selected";
             InfoText.text = "";   
         }
-    }
-
-    void OnGameStart()
-    {
-        GameBoard.CurrentPlayer = Player1Starts ? 0 : 1;
     }
 }

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-public class Minimax : MonoBehaviour, IAlgorithm
+public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 {
     // >> Heuristics <<
     //
@@ -16,7 +16,7 @@ public class Minimax : MonoBehaviour, IAlgorithm
     //      H(S) = W(Fi)*Fi(S) + Random;
     //
     [Range(1, 3)]
-    public int Depth;
+    public int Depth;   
     public AStar AStar;
 
     GameBoard _gameBoard;
@@ -130,7 +130,7 @@ public class Minimax : MonoBehaviour, IAlgorithm
         return true;
     }
 
-    public bool IsBoardValid()
+    bool IsBoardValid()
     {
         return AStar.CalculateDistancesToObjective();
     }
@@ -184,7 +184,7 @@ public class Minimax : MonoBehaviour, IAlgorithm
         return (player == 0 ? _gameBoard.Players[0].Pawn.Tile.Row : _gameBoard.Border - _gameBoard.Players[0].Pawn.Tile.Row);
     }
 
-    public void SetWeights(float[,] param = null)
+    void SetWeights(float[,] param = null)
     {
         if (param == null)
         {
@@ -204,17 +204,17 @@ public class Minimax : MonoBehaviour, IAlgorithm
         }
     }
 
-    public void SetWeight(int player, int evalFunctionIndex, float newWeight)
+    void SetWeight(int player, int evalFunctionIndex, float newWeight)
     {
         _weights[evalFunctionIndex, player] = newWeight;
     }
 
-    public float GetWeight(int player, int evalFunctionIndex)
+    float GetWeight(int player, int evalFunctionIndex)
     {
         return _weights[evalFunctionIndex, player];
     }
 
-    public void SaveWeights()
+    void SaveWeights()
     {
         StreamWriter stream = new StreamWriter(Names.SaveWeightsPath_ + Names.SaveExt, false);
         stream.WriteLine(_weights[0, 0] + " " + _weights[1, 0] + " " + _weights[2, 0] + " " + _weights[3, 0]);

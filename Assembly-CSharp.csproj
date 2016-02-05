@@ -58,7 +58,7 @@
      <Compile Include="Assets\Scripts\CameraManager.cs" />
      <Compile Include="Assets\Scripts\GameAI\Minimax.cs" />
      <Compile Include="Assets\Scripts\GameAI\MinimaxNode.cs" />
-     <Compile Include="Assets\Scripts\Interfaces\IAlgorithm.cs" />
+     <Compile Include="Assets\Scripts\Interfaces\IBestMoveAlgorithm.cs" />
      <Compile Include="Assets\Scripts\Libraries\Counter.cs" />
      <Compile Include="Assets\Scripts\Libraries\Names.cs" />
      <Compile Include="Assets\Scripts\Libraries\NamesUI.cs" />

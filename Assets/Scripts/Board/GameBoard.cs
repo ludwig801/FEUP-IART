@@ -27,7 +27,7 @@ public class GameBoard : MonoBehaviour
     [Range(0.25f, 1.25f)]
     public float MinWallWidth;
     [Range(-1, 1)]
-    public int CurrentPlayer;
+    public int StartingPlayer, CurrentPlayer;
     public Stack<Move> Moves;
     public Move.Types MoveType;
     public Tile FocusedTile;
@@ -121,7 +121,7 @@ public class GameBoard : MonoBehaviour
         Ongoing = true;
         PlacePawns();
 
-        CurrentPlayer = -1;
+        CurrentPlayer = StartingPlayer - 1;
         NextTurn();
 
         FocusedTile = Players[CurrentPlayer].Pawn.Tile;
@@ -180,7 +180,7 @@ public class GameBoard : MonoBehaviour
     {
         VisualBoard.localScale = new Vector3(Size * (TileSize + TileSpacingFactor) + TileSize, Size * (TileSize + TileSpacingFactor) + TileSize, 1);
 
-        _referenceFocused.gameObject.SetActive(FocusedTile != null);
+        _referenceFocused.gameObject.SetActive(FocusedTile != null && !Players[CurrentPlayer].IsCpu);
         if (FocusedTile != null)
         {
             _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, FocusedTile.transform.position + new Vector3(0, 0.5f, 0), Time.deltaTime * 8f);
