@@ -54,6 +54,7 @@
      <Compile Include="Assets\Scripts\Board\Player.cs" />
      <Compile Include="Assets\Scripts\Board\Tile.cs" />
      <Compile Include="Assets\Scripts\Board\Wall.cs" />
+     <Compile Include="Assets\Scripts\CameraManager.cs" />
      <Compile Include="Assets\Scripts\GameAI\Minimax.cs" />
      <Compile Include="Assets\Scripts\GameAI\MinimaxNode.cs" />
      <Compile Include="Assets\Scripts\Interfaces\IBestMoveAlgorithm.cs" />

@@ -4,14 +4,14 @@ using System.Collections.Generic;
 
 public class Tile : MonoBehaviour
 {
-    public Color ColorDefault, ColorHighlighted, ColorSelected;
+    public Color ColorDefault, ColorHighlighted, ColorOccupied, ColorSelected, ColorObjective;
     [Range(0, 10f)]
     public float TransitionsSpeed;
     public List<Edge> Edges;
     public int Row, Col;
     [Range(0.5f, 1.5f)]
     public float Height;
-    public bool Occupied, Selected, Highlighted;
+    public bool Occupied, Selected, Highlighted, Objective;
     public int AStarCostValue, AStarHeuristicValue;
     public int AStarFunctionValue { get { return AStarCostValue + AStarHeuristicValue; } }
     public Tile AStarPathParent;
@@ -25,9 +25,12 @@ public class Tile : MonoBehaviour
 
     void Update()
     {
-        _material.color = TransitionsSpeed > 0 ?
-            Color.Lerp(_material.color, Selected ? ColorSelected : Highlighted ? ColorHighlighted : ColorDefault, Time.deltaTime * TransitionsSpeed) : 
-            Selected ? ColorSelected : Highlighted ? ColorHighlighted : ColorDefault;
+        _material.color = Color.Lerp(_material.color,
+            Selected ? ColorSelected :
+            Occupied ? ColorOccupied :
+            Highlighted ? ColorHighlighted :
+            Objective ? ColorObjective :
+            ColorDefault, TransitionsSpeed > 0 ? Time.deltaTime * TransitionsSpeed : 1);
     }
 
     public bool AboveTo(Tile other)

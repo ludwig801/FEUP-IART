@@ -9,7 +9,8 @@ public class UIManager : MonoBehaviour
     // Menu Panel
     public Toggle Player1Starts, Player1IsCPU, Player2IsCPU;
     public Slider DifficultySlider;
-    public Text DifficultyLabel;
+    public Image PlayerColor;
+    public Text DifficultyLabel, Player, InfoText;
     public string[] Difficulties = new string[]
     {
         "Normal",
@@ -32,6 +33,28 @@ public class UIManager : MonoBehaviour
         var sliderVal = (int)DifficultySlider.value;
         GameBoard.Minimax.Depth = sliderVal + 1;
         DifficultyLabel.text = "Level: " + Difficulties[sliderVal];
+
+        if (GameBoard.Ongoing)
+        {
+            PlayerColor.color = GameBoard.Players[GameBoard.CurrentPlayer].Color;
+            Player.text = "Player " + (GameBoard.CurrentPlayer + 1);
+            switch (GameBoard.MoveType)
+            {
+                case Move.Types.MovePawn:
+                    InfoText.text = "Move your pawn...";
+                    break;
+
+                case Move.Types.PlaceWall:
+                    InfoText.text = "Place your wall...";
+                    break;
+            }  
+        }
+        else
+        {
+            PlayerColor.color = Color.white;
+            Player.text = "No Player Selected";
+            InfoText.text = "";   
+        }
     }
 
     void OnGameStart()

@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.EventSystems;
 
 public class GameBoard : MonoBehaviour
 {
@@ -15,11 +14,10 @@ public class GameBoard : MonoBehaviour
 
     static GameBoard _instance;
 
-    public Transform CameraPivot, TilesTransform, EdgesTransform, VisualBoard, WallsTransform;
+    public Transform TilesTransform, EdgesTransform, VisualBoard, WallsTransform;
     public GameObject TilePrefab, EdgePrefab, WallPrefab, FocusPrefab;
     public Minimax Minimax;
-    [Range(0, 10)]
-    public int CameraRotationSpeed;
+    public CameraManager Camera;
     [Range(9, 9)]
     public int Size;
     [Range(1, 5)]
@@ -68,24 +66,19 @@ public class GameBoard : MonoBehaviour
 
         CreateTiles();
         CreateEdges();
-        PlacePawns();
 
-        Ongoing = false;
-
-        NextTurn();
-
-        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
         _referenceFocused = Instantiate(FocusPrefab).transform;
         _referenceFocused.localScale = new Vector3(0.75f * TileSize, 0.25f, 0.75f * TileSize);
 
-        _rotateCameraPivotTo = CameraPivot.rotation;
-
         StartCoroutine(UpdateEdges());
+
+        Ongoing = false;
+        //Restart();
     }
 
     void Update()
     {
-        if (Players[CurrentPlayer].IsCpu)
+        if (Ongoing && Players[CurrentPlayer].IsCpu)
         {
             if (!Minimax.IsAlgorithmRunning())
             {
@@ -100,6 +93,27 @@ public class GameBoard : MonoBehaviour
         HandleKeysInput();
 
         UpdateVisualElements();
+    }
+
+    public void Pause()
+    {
+        Ongoing = false;
+    }
+
+    public void Resume()
+    {
+        Ongoing = true;
+    }
+
+    public void NewGame()
+    {
+        Ongoing = true;
+        PlacePawns();
+
+        CurrentPlayer = -1;
+        NextTurn();
+
+        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
     }
 
     IEnumerator UpdateEdges()
@@ -119,6 +133,9 @@ public class GameBoard : MonoBehaviour
     {
         if (Input.GetKeyUp(KeyCode.Escape))
             QuitApplication();
+
+        if (!Ongoing)
+            return;
 
         if (Players[CurrentPlayer].IsCpu)
             return;
@@ -146,18 +163,6 @@ public class GameBoard : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.W))
             FocusTile(0, +1);
-
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
-            RotateCameraPivot(-1, 0);
-
-        if (Input.GetKeyDown(KeyCode.RightArrow))
-            RotateCameraPivot(+1, 0);
-
-        if (Input.GetKeyDown(KeyCode.DownArrow))
-            RotateCameraPivot(0, -1);
-
-        if (Input.GetKeyDown(KeyCode.UpArrow))
-            RotateCameraPivot(0, +1);
     }
 
     void UpdateVisualElements()
@@ -171,36 +176,20 @@ public class GameBoard : MonoBehaviour
             _referenceWall.Invalid = !CanPlaceWall(FocusedTile, _referenceWall.Horizontal);
             _referenceWall.Tile = (MoveType == Move.Types.PlaceWall) ? FocusedTile : null;
         }
-
-        CameraPivot.rotation = Quaternion.Lerp(CameraPivot.rotation, _rotateCameraPivotTo, CameraRotationSpeed > 0 ? CameraRotationSpeed * Time.deltaTime : 1);
     }
 
     public void FocusTile(int horizontalInput, int verticalInput)
     {
-        if (CameraPivot.rotation.eulerAngles.y < 45)
-        {
-            // Do nothing
-        }
-        else if (CameraPivot.rotation.eulerAngles.y < 135)
-        {
-            var hTemp = -horizontalInput;
-            horizontalInput = verticalInput;
-            verticalInput = hTemp;
-        }
-        else if (CameraPivot.rotation.eulerAngles.y < 225)
-        {
-            horizontalInput = -horizontalInput;
-            verticalInput = -verticalInput;            
-        }
-        else if (CameraPivot.rotation.eulerAngles.y < 315)
-        {
-            var hTemp = horizontalInput;
-            horizontalInput = -verticalInput;
-            verticalInput = hTemp;         
-        }
+        var rotatedHorizontalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? horizontalInput :
+            Camera.EulerHorizontal < 135 ? verticalInput : Camera.EulerHorizontal < 225 ? -horizontalInput : -verticalInput;
 
-        if (IsBoardPosition(FocusedTile.Row + verticalInput, FocusedTile.Col + horizontalInput))
-            FocusedTile = Tiles[FocusedTile.Row + verticalInput, FocusedTile.Col + horizontalInput];
+        var rotatedVerticalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? verticalInput :
+            Camera.EulerHorizontal < 135 ? -horizontalInput : Camera.EulerHorizontal < 225 ? -verticalInput : horizontalInput;
+
+        if (IsBoardPosition(FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput))
+        {
+            FocusedTile = Tiles[FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput]; 
+        } 
     }
 
     public void ChangeWallOrientation()
@@ -216,15 +205,6 @@ public class GameBoard : MonoBehaviour
     public void QuitApplication()
     {
         Application.Quit();
-    }
-
-    void RotateCameraPivot(int horizontalInput, int verticalInput)
-    {
-        var rotation = _rotateCameraPivotTo.eulerAngles;
-        rotation.y -= 90 * horizontalInput;
-        rotation.x += 10 * verticalInput;
-        rotation.x = Mathf.Clamp(rotation.x, 300, 355);
-        _rotateCameraPivotTo.eulerAngles = rotation;
     }
 
     void SelectTile(Tile tile)
@@ -244,14 +224,18 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    void UnselectAllTiles()
+    void SetPropertiesForAllTiles(bool selected, bool highlighted, bool objective, bool resetOccupied)
     {
         for (var row = 0; row < Size; row++)
         {
             for (var col = 0; col < Size; col++)
             {
-                Tiles[row, col].Highlighted = false;
-                Tiles[row, col].Selected = false;
+                var tile = Tiles[row, col];
+                tile.Selected = selected;
+                tile.Highlighted = highlighted;
+                tile.Objective = objective;
+                if (resetOccupied)
+                    tile.Occupied = false;
             }
         }
     }
@@ -297,6 +281,8 @@ public class GameBoard : MonoBehaviour
 
     void PlacePawns()
     {
+        SetPropertiesForAllTiles(false, false, false, true);
+
         var col = Size / 2;
         for (var i = 0; i < Players.Count; i++)
         {
@@ -477,6 +463,27 @@ public class GameBoard : MonoBehaviour
         }
 
         return false;
+    }
+
+    void MarkObjectiveRow(int player)
+    {
+        var objectiveRow = Players[player].ObjectiveRow;
+
+        for (var col = 0; col < Size; col++)
+        {
+            Tiles[objectiveRow, col].Objective = true;
+        }
+    }
+
+    void CreateTemporaryEdges(int currentPlayer)
+    {
+        for (var i = 0; i < Players.Count; i++)
+        {
+            if (i != currentPlayer)
+            {
+                CreateTemporaryEdges(Players[i].Pawn.Tile);
+            }
+        }
     }
 
     void CreateTemporaryEdges(Tile tile)
@@ -741,26 +748,17 @@ public class GameBoard : MonoBehaviour
 
     public void NextTurn()
     {
-        RemoveTemporaryEdges();
-
-        UnselectAllTiles();
-
         _referenceWall.Tile = null;
+        RemoveTemporaryEdges();
+        SetPropertiesForAllTiles(false, false, false, false);
 
         CurrentPlayer = GetNextPlayer();
-
-        for (var i = 0; i < Players.Count; i++)
-        {
-            if (i != CurrentPlayer)
-            {
-                CreateTemporaryEdges(Players[i].Pawn.Tile);
-            }
-        }
-
-        MoveType = Move.Types.MovePawn;
+        CreateTemporaryEdges(CurrentPlayer);
+        MarkObjectiveRow(CurrentPlayer);
 
         SelectTile(Players[CurrentPlayer].Pawn.Tile);
         FocusedTile = Players[CurrentPlayer].Pawn.Tile;
+        MoveType = Move.Types.MovePawn;
     }
 
     public void PreviousTurn()
