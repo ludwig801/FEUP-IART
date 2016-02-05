@@ -1,17 +1,12 @@
 ﻿<Properties StartupItem="Assembly-CSharp.csproj" RefactoringSettings.EnableRefactorings="True">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="Unity.Instance.Unity Editor" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\Board\GameBoard.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\GameAI\Minimax.cs">
     <Files>
-      <File FileName="Assets\Scripts\Board\Pawn.cs" Line="23" Column="38" />
-      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="303" Column="47" />
-      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\Tile.cs" Line="68" Column="1" />
-      <File FileName="Assets\Scripts\Board\Wall.cs" Line="41" Column="125" />
-      <File FileName="Assets\Scripts\Libraries\Names.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\Move.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\MovePawn.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\PlaceWall.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\Board\Edge.cs" Line="28" Column="168" />
+      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="105" Column="7" />
+      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="64" Column="5" />
+      <File FileName="Assets\Scripts\Interfaces\IBestMoveAlgorithm.cs" Line="9" Column="9" />
+      <File FileName="Assets\Scripts\UIManager.cs" Line="31" Column="30" />
+      <File FileName="Assets\Scripts\Board\Player.cs" Line="6" Column="17" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

@@ -23,7 +23,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     int[] _distanceToObjective;
     float[,] _weights;
     Move _bestMove;
-    bool _running;
+    bool _running, _finished;
 
     void Start()
     {
@@ -47,6 +47,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         var root = new MinimaxNode(true);
 
         _running = true;
+        _finished = false;
 
         MinimaxAlphaBeta(root, Depth);
     }
@@ -58,7 +59,12 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 
     public bool IsAlgorithmFinished()
     {
-        return !IsAlgorithmRunning() && _bestMove != null;
+        return _finished && _bestMove != null;
+    }
+
+    public Move GetResult()
+    {
+        return _bestMove;
     }
 
     bool MinimaxAlphaBeta(MinimaxNode node, int depth)
@@ -67,6 +73,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         {
             node.heuristicValue = CalcHeuristicValue(_gameBoard.CurrentPlayer);
             _running = false;
+            _finished = true;
             return true;
         }
 

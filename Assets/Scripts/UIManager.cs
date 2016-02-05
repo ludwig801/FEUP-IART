@@ -4,6 +4,8 @@ using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
+    public GameBoard GameBoard;
+
     // Menu Panel
     public Toggle Player1Starts, Player1IsCPU, Player2IsCPU;
     public Slider DifficultySlider;
@@ -15,27 +17,25 @@ public class UIManager : MonoBehaviour
         "Asian"
     };
 
-//    void Start()
-//    {
-//        _gameManager = GameManager.Instance;
-//    }
-//
-//    void Update()
-//    {
-//        switch (_gameManager.CurrentGameState)
-//        {
-//            case GameManager.GameState.Stopped:
-//                _gameManager.Players[0].IsCpu = Player1IsCPU.isOn;
-//                _gameManager.Players[1].IsCpu = Player2IsCPU.isOn;
-//                var sliderVal = (int)DifficultySlider.value;
-//                _gameManager.Minimax.Depth = sliderVal + 1;
-//                DifficultyLabel.text = Difficulties[sliderVal];
-//                break;
-//        }
-//    }
-//
-//    public void OnNewGame()
-//    {
-//        _gameManager.InitialPlayer = Player1Starts ? 0 : 1;
-//    }
+    void Start()
+    {
+        DifficultySlider.wholeNumbers = true;
+        DifficultySlider.minValue = 0;
+        DifficultySlider.value = 0;
+        DifficultySlider.maxValue = Difficulties.Length - 1;
+    }
+
+    void Update()
+    {
+        GameBoard.Players[0].IsCpu = Player1IsCPU.isOn;
+        GameBoard.Players[1].IsCpu = Player2IsCPU.isOn;
+        var sliderVal = (int)DifficultySlider.value;
+        GameBoard.Minimax.Depth = sliderVal + 1;
+        DifficultyLabel.text = "Level: " + Difficulties[sliderVal];
+    }
+
+    void OnGameStart()
+    {
+        GameBoard.CurrentPlayer = Player1Starts ? 0 : 1;
+    }
 }

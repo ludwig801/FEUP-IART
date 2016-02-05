@@ -1,17 +1,34 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.EventSystems;
 
-public class Tile : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+public class Tile : MonoBehaviour
 {
+    public Color ColorDefault, ColorHighlighted, ColorSelected;
+    [Range(0, 10f)]
+    public float TransitionsSpeed;
     public List<Edge> Edges;
     public int Row, Col;
-    public int AStarCostValue;
-    public int AStarHeuristicValue;
+    [Range(0.5f, 1.5f)]
+    public float Height;
+    public bool Occupied, Selected, Highlighted;
+    public int AStarCostValue, AStarHeuristicValue;
     public int AStarFunctionValue { get { return AStarCostValue + AStarHeuristicValue; } }
     public Tile AStarPathParent;
-    public bool Occupied;
+
+    Material _material;
+
+    void Start()
+    {
+        _material = GetComponent<MeshRenderer>().material;
+    }
+
+    void Update()
+    {
+        _material.color = TransitionsSpeed > 0 ?
+            Color.Lerp(_material.color, Selected ? ColorSelected : Highlighted ? ColorHighlighted : ColorDefault, Time.deltaTime * TransitionsSpeed) : 
+            Selected ? ColorSelected : Highlighted ? ColorHighlighted : ColorDefault;
+    }
 
     public bool AboveTo(Tile other)
     {
@@ -56,21 +73,6 @@ public class Tile : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, I
         }
 
         return false;
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        GameBoard.Instance.OnAction(this);
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        GameBoard.Instance.OnTileEnter(this);
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        GameBoard.Instance.OnTileExit(this);
     }
 
     public override string ToString()

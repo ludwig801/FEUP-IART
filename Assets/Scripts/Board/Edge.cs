@@ -8,10 +8,13 @@ public class Edge : MonoBehaviour
     public int Speed;
     [Range(0.1f, 1)]
     public float Thickness;
+    [Range(0, 2)]
+    public float Height;
     public Tile A, B;
     public bool Free, Active;
 
     Material _material;
+    Vector3 _offset;
 
     void Start()
     {
@@ -20,9 +23,9 @@ public class Edge : MonoBehaviour
 
     void Update()
     {
-        transform.position = Vector3.Lerp(A.transform.position, B.transform.position, 0.5f);
+        transform.position = Vector3.Lerp(A.transform.position, B.transform.position, 0.5f) + new Vector3(0, Height, 0);
         var delta = (B.transform.position - A.transform.position);
-        transform.localScale = new Vector3(Thickness, 0.45f * delta.magnitude, Thickness);
+        transform.localScale = new Vector3(Thickness, 0.45f * delta.magnitude * 0.4f, Thickness);
         transform.localRotation = Quaternion.LookRotation(delta);
         transform.Rotate(new Vector3(1, 0, 0), 90);
         _material.color = Speed > 0 ? Color.Lerp(_material.color, Active ? ColorActive : ColorInactive, Speed * Time.deltaTime) : Active ? ColorActive : ColorInactive;

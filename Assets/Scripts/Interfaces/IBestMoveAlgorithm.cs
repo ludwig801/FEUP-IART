@@ -5,4 +5,6 @@
     bool IsAlgorithmFinished();
 
     bool IsAlgorithmRunning();
+
+    Move GetResult();
 }
