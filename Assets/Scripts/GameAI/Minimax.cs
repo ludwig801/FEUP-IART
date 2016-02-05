@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-public class Minimax : MonoBehaviour, IBestMoveAlgorithm
+public class Minimax : MonoBehaviour, IAlgorithm
 {
     // >> Heuristics <<
     //
@@ -17,19 +17,16 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     //
     [Range(1, 3)]
     public int Depth;
+    public AStar AStar;
 
     GameBoard _gameBoard;
-    int[] _distanceToNextRow;
-    int[] _distanceToObjective;
     float[,] _weights;
     Move _bestMove;
-    bool _running, _finished;
+    bool _running, _finished, _error;
 
     void Start()
     {
         _gameBoard = GameBoard.Instance;
-        _distanceToNextRow = new int[_gameBoard.Players.Count];
-        _distanceToObjective = new int[_gameBoard.Players.Count];
         _weights = new float[4, _gameBoard.Players.Count];
 
         ReadWeights();
@@ -37,33 +34,39 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         _bestMove = null;
     }
         
-    public void RunAlgorithm(GameBoard currentBoard)
+    public void RunAlgorithm()
     {
-        _gameBoard = currentBoard;
         _bestMove = null;
-        _distanceToNextRow = new int[_gameBoard.Players.Count];
-        _distanceToObjective = new int[_gameBoard.Players.Count];
 
         var root = new MinimaxNode(true);
 
+        _error = false;
         _running = true;
         _finished = false;
 
         MinimaxAlphaBeta(root, Depth);
     }
 
-    public bool IsAlgorithmRunning()
+    public bool IsRunning()
     {
         return _running;
     }
 
-    public bool IsAlgorithmFinished()
+    public bool IsFinished()
     {
         return _finished && _bestMove != null;
     }
 
-    public Move GetResult()
+    public bool InErrorState()
     {
+        return _error;
+    }
+
+    public object GetResult()
+    {
+        _finished = false;
+        _running = false;
+        _error = false;
         return _bestMove;
     }
 
@@ -89,15 +92,16 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
             if (!_gameBoard.PlayMove(move))
                 continue;
 
-            _gameBoard.NextTurn();
-
             if (IsBoardValid())
             {
                 child.alpha = node.alpha;
                 child.beta = node.beta;
                 child.move = move;
                 if (!MinimaxAlphaBeta(child, depth - 1))
+                {
+                    _error = true;
                     return false;
+                }
 
                 if (node.isMaximizer)
                 {
@@ -114,9 +118,10 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
             }
 
             if (!_gameBoard.UndoMove())
+            {
+                _error = true;
                 return false;
-
-            _gameBoard.PreviousTurn();
+            }
 
             if (AlphaBetaCut(node, child))
                 break;
@@ -127,7 +132,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 
     public bool IsBoardValid()
     {
-        return AStarDistanceToObjective();
+        return AStar.CalculateDistancesToObjective();
     }
 
     bool AlphaBetaCut(MinimaxNode node, MinimaxNode child)
@@ -155,7 +160,8 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     float CalcHeuristicValue(int player)
     {
         // F3 & F4
-        AStarDistanceToNextRow();
+        if (!AStar.CalculateDistancesToNextRow())
+            return -1;
 
         var nextPlayer = _gameBoard.GetNextPlayer();
 
@@ -165,123 +171,12 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         var weightD = _weights[3, player];
         var row = GetPlayerRowAbs(nextPlayer);
 
-        var heuristicValueA = weightA * (0.012000f) * (80 - _distanceToObjective[player]);
-        var heuristicValueB = weightB * (0.012000f) * (_distanceToObjective[nextPlayer] - 80);
-        var heuristicValueC = weightC * (0.111000f) * (8 - _distanceToNextRow[player]);
-        var heuristicValueD = weightD * (0.012321f) * (_distanceToNextRow[nextPlayer] - 8) * row;
+        var heuristicValueA = weightA * (0.012000f) * (80 - AStar.LastResult[player]);
+        var heuristicValueB = weightB * (0.012000f) * (AStar.LastResult[nextPlayer] - 80);
+        var heuristicValueC = weightC * (0.111000f) * (8 - AStar.LastResult[player]);
+        var heuristicValueD = weightD * (0.012321f) * (AStar.LastResult[nextPlayer] - 8) * row;
 
         return (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) * Random.Range(0.99f, 1.01f);
-    }
-
-    bool AStarDistanceToNextRow()
-    {
-        for (var i = 0; i < _gameBoard.Players.Count; i++)
-        {
-            var playerPawnTile = _gameBoard.Players[i].Pawn.Tile;
-            var localObjectiveRow = playerPawnTile.Row + (playerPawnTile.Row < _gameBoard.Players[i].ObjectiveRow ? 1 : -1);
-
-            _distanceToNextRow[i] = AStar(i, localObjectiveRow, true);
-            if (_distanceToNextRow[i] < 0)
-                return false;
-        }
-
-        return true;
-    }
-
-    bool AStarDistanceToObjective()
-    {
-        for (var i = 0; i < _gameBoard.Players.Count; i++)
-        {
-            _distanceToObjective[i] = AStar(i, _gameBoard.Players[i].ObjectiveRow, false);
-            if (_distanceToNextRow[i] < 0)
-                return false;
-        }
-
-        return true;
-    }
-
-    int AStar(int player, int objective, bool contemplatePawns)
-    {
-        var openList = new List<Tile>();
-        var closedList = new List<Tile>();
-        var startingTile = _gameBoard.Players[player].Pawn.Tile;
-        startingTile.AStarCostValue = 0;
-        startingTile.AStarHeuristicValue = AStarHeuristicValue(startingTile, objective);
-        startingTile.AStarPathParent = null;
-
-        openList.Add(startingTile);
-
-        while (openList.Count > 0)
-        {
-            Tile bestChoice;
-            if (!GetAStarBestTile(openList, out bestChoice))
-                break;
-
-            // If objective reached
-            if ((player == 0 && bestChoice.Row >= objective) || (player == 1 && bestChoice.Row <= objective))
-                return AStarReconstruct(startingTile, bestChoice);
-
-            // Remove current from the open list and add it to closed list
-            openList.Remove(bestChoice);
-            closedList.Add(bestChoice);
-
-            // Add current's neighbors to the open list
-            for (var i = 0; i < bestChoice.Edges.Count; i++)
-            {
-                var neighbor = bestChoice.Edges[i].GetNeighborOf(bestChoice);
-
-                if (!(closedList.Contains(neighbor) || (contemplatePawns && neighbor.Occupied)))
-                {
-                    var neighborGPlusUne = bestChoice.AStarCostValue + 1;
-                    bool inOpenList = openList.Contains(neighbor);
-
-                    if (!inOpenList || neighborGPlusUne < neighbor.AStarCostValue)
-                    {
-                        neighbor.AStarPathParent = bestChoice;
-                        neighbor.AStarCostValue = neighborGPlusUne;
-                        neighbor.AStarHeuristicValue = AStarHeuristicValue(neighbor, objective);
-                        if (!inOpenList)
-                        {
-                            openList.Add(neighbor);
-                        }
-                    }
-                }
-            }
-        }
-
-        return -1;
-    }
-
-    int AStarReconstruct(Tile start, Tile current)
-    {
-        int movesCount = 0;
-
-        while (current != start)
-        {
-            movesCount++;
-            current = current.AStarPathParent;
-        }
-
-        return movesCount;
-    }
-
-    bool GetAStarBestTile(List<Tile> openList, out Tile bestTile)
-    {
-        bestTile = null;
-        for (int i = 0; i < openList.Count; i++)
-        {
-            if (bestTile == null || openList[i].AStarFunctionValue < bestTile.AStarFunctionValue)
-            {
-                bestTile = openList[i];
-            }
-        }
-
-        return bestTile != null;
-    }
-
-    int AStarHeuristicValue(Tile node, int objective)
-    {
-        return Mathf.Abs(node.Row - objective);
     }
 
     int GetPlayerRowAbs(int player)

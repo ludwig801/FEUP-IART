@@ -78,15 +78,26 @@ public class GameBoard : MonoBehaviour
 
     void Update()
     {
-        if (Ongoing && Players[CurrentPlayer].IsCpu)
+        if (Ongoing && !IsGameOver() && Players[CurrentPlayer].IsCpu)
         {
-            if (!Minimax.IsAlgorithmRunning())
+            if (Minimax.IsRunning())
             {
-                Minimax.RunAlgorithm(this);
+                if (Minimax.InErrorState())
+                {
+                    Debug.Log("An Error Occurred...");
+                }
             }
-            else if (Minimax.IsAlgorithmFinished())
+            else
             {
-                PlayMove(Minimax.GetResult());
+                if (Minimax.IsFinished())
+                {
+                    Move best = Minimax.GetResult() as Move;
+                    PlayMove(best);
+                }
+                else
+                {
+                    Minimax.RunAlgorithm();                 
+                }
             }
         }
 
@@ -134,7 +145,7 @@ public class GameBoard : MonoBehaviour
         if (Input.GetKeyUp(KeyCode.Escape))
             QuitApplication();
 
-        if (!Ongoing)
+        if (!Ongoing || IsGameOver())
             return;
 
         if (Players[CurrentPlayer].IsCpu)
@@ -412,18 +423,23 @@ public class GameBoard : MonoBehaviour
 
     public bool PlayMove(Move move)
     {
+        bool moveIsOk = false;
+
         if (move.GetType() == typeof(MovePawn))
         {
             var movePawn = move as MovePawn;
-            return MovePawnTo(movePawn.Pawn, movePawn.Destination);
+            moveIsOk = MovePawnTo(movePawn.Pawn, movePawn.Destination);
         }
         else if (move.GetType() == typeof(PlaceWall))
         {
             var placeWall = move as PlaceWall;
-            return CreateWall(placeWall.Tile, placeWall.Horizontal);
+            moveIsOk = CreateWall(placeWall.Tile, placeWall.Horizontal);
         }
 
-        return false;
+        if (moveIsOk)
+            NextTurn();
+
+        return moveIsOk;
     }
 
     bool IsBoardPosition(int row, int col)
