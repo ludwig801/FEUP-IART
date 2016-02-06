@@ -4,13 +4,8 @@ using System.Collections.Generic;
 
 public class GameBoard : MonoBehaviour
 {
-    public static GameBoard Instance
-    {
-        get
-        {
-            return _instance;
-        }
-    }
+    // Singleton
+    public static GameBoard Instance { get { return _instance; } }
 
     static GameBoard _instance;
 
@@ -28,6 +23,9 @@ public class GameBoard : MonoBehaviour
     public float MinWallWidth;
     [Range(-1, 1)]
     public int StartingPlayer, CurrentPlayer;
+    [Range(0, 10)]
+    public int MaxWallsPerPlayer;
+    public int MoveCount;
     public Stack<Move> Moves;
     public Move.Types MoveType;
     public Tile FocusedTile;
@@ -36,18 +34,15 @@ public class GameBoard : MonoBehaviour
     public List<Wall> Walls;
     public List<Player> Players;
     public Tile[,] Tiles;
+    [Range(0f, 2f)]
+    public float WaitForNextCPU;
+
+    public int Border { get { return Size - 1; } }
 
     Transform _referenceFocused;
     Wall _referenceWall;
     Quaternion _rotateCameraPivotTo;
-
-    public int Border
-    {
-        get
-        {
-            return Size - 1;
-        }
-    }
+    float _waitForNextPlay;
 
     void Awake()
     {
@@ -104,27 +99,6 @@ public class GameBoard : MonoBehaviour
         HandleKeysInput();
 
         UpdateVisualElements();
-    }
-
-    public void Pause()
-    {
-        Ongoing = false;
-    }
-
-    public void Resume()
-    {
-        Ongoing = true;
-    }
-
-    public void NewGame()
-    {
-        Ongoing = true;
-        PlacePawns();
-
-        CurrentPlayer = StartingPlayer - 1;
-        NextTurn();
-
-        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
     }
 
     IEnumerator UpdateEdges()
@@ -187,35 +161,6 @@ public class GameBoard : MonoBehaviour
             _referenceWall.Invalid = !CanPlaceWall(FocusedTile, _referenceWall.Horizontal);
             _referenceWall.Tile = (MoveType == Move.Types.PlaceWall) ? FocusedTile : null;
         }
-    }
-
-    public void FocusTile(int horizontalInput, int verticalInput)
-    {
-        var rotatedHorizontalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? horizontalInput :
-            Camera.EulerHorizontal < 135 ? verticalInput : Camera.EulerHorizontal < 225 ? -horizontalInput : -verticalInput;
-
-        var rotatedVerticalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? verticalInput :
-            Camera.EulerHorizontal < 135 ? -horizontalInput : Camera.EulerHorizontal < 225 ? -verticalInput : horizontalInput;
-
-        if (IsBoardPosition(FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput))
-        {
-            FocusedTile = Tiles[FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput]; 
-        } 
-    }
-
-    public void ChangeWallOrientation()
-    {
-        _referenceWall.Horizontal = !_referenceWall.Horizontal;
-    }
-
-    public void ChangeToNextMode()
-    {
-        MoveType = Move.GetNextType(MoveType);
-    }
-
-    public void QuitApplication()
-    {
-        Application.Quit();
     }
 
     void SelectTile(Tile tile)
@@ -392,56 +337,6 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    public int GetNextPlayer()
-    {
-        var next = CurrentPlayer + 1;
-        next %= Players.Count;
-        return next;
-    }
-
-    public int GetPreviousPlayer()
-    {
-        var previous = CurrentPlayer - 1;
-        if (previous < 0)
-            previous = Players.Count + previous;
-        return previous;
-    }
-
-    public void OnAction()
-    {
-        if (MoveType == Move.Types.PlaceWall)
-        {
-            if (CreateWall(FocusedTile, _referenceWall.Horizontal))
-                NextTurn();
-        }
-        else if (MoveType == Move.Types.MovePawn)
-        {
-            if (MovePawnTo(Players[CurrentPlayer].Pawn, FocusedTile))
-                NextTurn();
-        }
-    }
-
-    public bool PlayMove(Move move)
-    {
-        bool moveIsOk = false;
-
-        if (move.GetType() == typeof(MovePawn))
-        {
-            var movePawn = move as MovePawn;
-            moveIsOk = MovePawnTo(movePawn.Pawn, movePawn.Destination);
-        }
-        else if (move.GetType() == typeof(PlaceWall))
-        {
-            var placeWall = move as PlaceWall;
-            moveIsOk = CreateWall(placeWall.Tile, placeWall.Horizontal);
-        }
-
-        if (moveIsOk)
-            NextTurn();
-
-        return moveIsOk;
-    }
-
     bool IsBoardPosition(int row, int col)
     {
         return (row >= 0) && (row < Size) &&
@@ -479,6 +374,15 @@ public class GameBoard : MonoBehaviour
         }
 
         return false;
+    }
+
+    void RemoveAllWalls()
+    {
+        for (var i = Walls.Count - 1; i >= 0; i--)
+        {
+            var wall = Walls[i];
+            RemoveWall(wall.Tile, wall.Horizontal);
+        }
     }
 
     void MarkObjectiveRow(int player)
@@ -742,9 +646,66 @@ public class GameBoard : MonoBehaviour
         return false;
     }
 
-    public List<Move> GetPossibleMoves()
+    public void Pause()
     {
-        var moves = new List<Move>();
+        Ongoing = false;
+    }
+
+    public void Resume()
+    {
+        Ongoing = true;
+    }
+
+    public void NewGame()
+    {
+        Ongoing = true;
+        PlacePawns();
+
+        CurrentPlayer = StartingPlayer - 1;
+        NextTurn();
+
+        foreach (var player in Players)
+        {
+            player.Walls = 0;
+        }
+            
+        RemoveAllWalls();
+
+        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
+    }
+
+    public void FocusTile(int horizontalInput, int verticalInput)
+    {
+        var rotatedHorizontalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? horizontalInput :
+            Camera.EulerHorizontal < 135 ? verticalInput : Camera.EulerHorizontal < 225 ? -horizontalInput : -verticalInput;
+
+        var rotatedVerticalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? verticalInput :
+            Camera.EulerHorizontal < 135 ? -horizontalInput : Camera.EulerHorizontal < 225 ? -verticalInput : horizontalInput;
+
+        if (IsBoardPosition(FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput))
+        {
+            FocusedTile = Tiles[FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput]; 
+        } 
+    }
+
+    public void ChangeWallOrientation()
+    {
+        _referenceWall.Horizontal = !_referenceWall.Horizontal;
+    }
+
+    public void ChangeToNextMode()
+    {
+        MoveType = Move.GetNextType(MoveType);
+    }
+
+    public void QuitApplication()
+    {
+        Application.Quit();
+    }
+
+    public Queue<Move> GetCurrentPossibleMoves()
+    {
+        var moves = new Queue<Move>();
         var currentPlayerPawn = Players[CurrentPlayer].Pawn;
 
         // Move pawn
@@ -752,44 +713,93 @@ public class GameBoard : MonoBehaviour
         {
             var neighbor = edge.GetNeighborOf(currentPlayerPawn.Tile);
             if (neighbor.CanMoveTo(currentPlayerPawn.Tile))
-                moves.Add(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
+                moves.Enqueue(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
         }
 
-        // Place horizontal walls
+        var hasWalls = MaxWallsPerPlayer - Players[CurrentPlayer].Walls > 0;
+        if (hasWalls)
+        {
+            // Place horizontal walls
+            for (var row = 0; row < Size; row++)
+            {
+                for (var col = 0; col < Size; col++)
+                {
+                    var tile = Tiles[row, col];
 
-        // Place vertical walls
+                    if (CanPlaceWall(tile, true))
+                        moves.Enqueue(new PlaceWall(tile, true));
+                }
+            }
+
+            // Place vertical walls
+            for (var row = 0; row < Size; row++)
+            {
+                for (var col = 0; col < Size; col++)
+                {
+                    var tile = Tiles[row, col];
+
+                    if (CanPlaceWall(tile, false))
+                        moves.Enqueue(new PlaceWall(tile, false));
+                }
+            }        
+        }
 
         return moves;
     }
 
-    public void NextTurn()
+    public int GetNextPlayer(int player)
     {
-        _referenceWall.Tile = null;
-        RemoveTemporaryEdges();
-        SetPropertiesForAllTiles(false, false, false, false);
-
-        CurrentPlayer = GetNextPlayer();
-        CreateTemporaryEdges(CurrentPlayer);
-        MarkObjectiveRow(CurrentPlayer);
-
-        SelectTile(Players[CurrentPlayer].Pawn.Tile);
-        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
-        MoveType = Move.Types.MovePawn;
+        var next = player + 1;
+        next %= Players.Count;
+        return next;
     }
 
-    public void PreviousTurn()
+    public int GetPreviousPlayer(int player)
     {
-        RemoveTemporaryEdges();
+        var previous = player - 1;
+        if (previous < 0)
+            previous = Players.Count + previous;
+        return previous;
+    }
 
-        CurrentPlayer = GetPreviousPlayer();
-
-        for (var i = 0; i < Players.Count; i++)
+    public void OnAction()
+    {
+        if (MoveType == Move.Types.PlaceWall)
         {
-            if (i != CurrentPlayer)
-            {
-                CreateTemporaryEdges(Players[i].Pawn.Tile);
-            }
+            if (CreateWall(FocusedTile, _referenceWall.Horizontal))
+                NextTurn();
         }
+        else if (MoveType == Move.Types.MovePawn)
+        {
+            if (MovePawnTo(Players[CurrentPlayer].Pawn, FocusedTile))
+                NextTurn();
+        }
+    }
+
+    public bool PlayMove(Move move)
+    {
+        bool moveIsOk = false;
+
+        if (move.GetType() == typeof(MovePawn))
+        {
+            var movePawn = move as MovePawn;
+            moveIsOk = MovePawnTo(movePawn.Pawn, movePawn.Destination);
+        }
+        else if (move.GetType() == typeof(PlaceWall))
+        {
+            var placeWall = move as PlaceWall;
+            moveIsOk = CreateWall(placeWall.Tile, placeWall.Horizontal);
+            if (moveIsOk)
+                Players[CurrentPlayer].Walls++;
+        }
+
+        if (moveIsOk)
+        {
+            NextTurn();
+            MoveCount++;         
+        }
+
+        return moveIsOk;
     }
 
     public bool MovePawnTo(Pawn pawn, Tile dest)
@@ -860,12 +870,45 @@ public class GameBoard : MonoBehaviour
             var move = lastMove as PlaceWall;
             if (!RemoveWall(move.Tile, move.Horizontal))
                 return false;
+            Players[GetPreviousPlayer(CurrentPlayer)].Walls--;
         }
 
         Moves.Pop();
         PreviousTurn();
 
+        MoveCount--;
+
         return true;
+    }
+
+    public void NextTurn()
+    {
+        _referenceWall.Tile = null;
+        RemoveTemporaryEdges();
+        SetPropertiesForAllTiles(false, false, false, false);
+
+        CurrentPlayer = GetNextPlayer(CurrentPlayer);
+        CreateTemporaryEdges(CurrentPlayer);
+        MarkObjectiveRow(CurrentPlayer);
+
+        SelectTile(Players[CurrentPlayer].Pawn.Tile);
+        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
+        MoveType = Move.Types.MovePawn;
+    }
+
+    public void PreviousTurn()
+    {
+        RemoveTemporaryEdges();
+
+        CurrentPlayer = GetPreviousPlayer(CurrentPlayer);
+
+        for (var i = 0; i < Players.Count; i++)
+        {
+            if (i != CurrentPlayer)
+            {
+                CreateTemporaryEdges(Players[i].Pawn.Tile);
+            }
+        }
     }
 
     public bool IsGameOver()

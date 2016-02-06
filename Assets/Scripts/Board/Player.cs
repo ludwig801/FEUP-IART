@@ -5,7 +5,12 @@ public class Player : MonoBehaviour
 {
     public bool IsCpu;
     public Color Color;
-    public List<Wall> Walls;
+    public int Walls;
     public Pawn Pawn;
     public int ObjectiveRow;
+
+    void Start()
+    {
+        Walls = 0;
+    }
 }

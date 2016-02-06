@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public class AStar : MonoBehaviour
 {
-    public int[] LastResult;
+    public int[] LastCalculatedResults;
 
     GameBoard _gameBoard;
     Tile _startingTile;
@@ -17,7 +17,7 @@ public class AStar : MonoBehaviour
 
     public bool CalculateDistancesToNextRow()
     {
-        LastResult = new int[_gameBoard.Players.Count];
+        LastCalculatedResults = new int[_gameBoard.Players.Count];
 
         for (var i = 0; i < _gameBoard.Players.Count; i++)
         {
@@ -26,7 +26,7 @@ public class AStar : MonoBehaviour
             _contemplatePawns = true;
 
             if (RunAlgorithm())
-                LastResult[i] = _output;
+                LastCalculatedResults[i] = _output;
             else
                 return false;
         }
@@ -36,7 +36,7 @@ public class AStar : MonoBehaviour
 
     public bool CalculateDistancesToObjective()
     {
-        LastResult = new int[_gameBoard.Players.Count];
+        LastCalculatedResults = new int[_gameBoard.Players.Count];
 
         for (var i = 0; i < _gameBoard.Players.Count; i++)
         {
@@ -45,7 +45,7 @@ public class AStar : MonoBehaviour
             _contemplatePawns = false;
 
             if (RunAlgorithm())
-                LastResult[i] = _output;
+                LastCalculatedResults[i] = _output;
             else
                 return false;
         }
@@ -57,12 +57,11 @@ public class AStar : MonoBehaviour
     {
         var openList = new List<Tile>();
         var closedList = new List<Tile>();
-        var startingTile = _startingTile;
-        startingTile.AStarCostValue = 0;
-        startingTile.AStarHeuristicValue = AStarHeuristicValue(startingTile, _objectiveRow);
-        startingTile.AStarPathParent = null;
+        _startingTile.AStarCostValue = 0;
+        _startingTile.AStarHeuristicValue = AStarHeuristicValue(_startingTile, _objectiveRow);
+        _startingTile.AStarPathParent = null;
 
-        openList.Add(startingTile);
+        openList.Add(_startingTile);
 
         while (openList.Count > 0)
         {
@@ -75,31 +74,34 @@ public class AStar : MonoBehaviour
             // If objective reached
             if (bestChoice.Row == _objectiveRow)
             {
-                _output = AStarPathCost(startingTile, bestChoice);
-                return (_output >= 0);
+                _output = AStarPathCost(_startingTile, bestChoice);
+                return (_output > 0);
             }
 
             openList.Remove(bestChoice);
             closedList.Add(bestChoice);
 
             // Add current's neighbors to the open list
-            for (var i = 0; i < bestChoice.Edges.Count; i++)
+            foreach (var edge in bestChoice.Edges)
             {
-                var neighbor = bestChoice.Edges[i].GetNeighborOf(bestChoice);
-
-                if (!(closedList.Contains(neighbor) || (_contemplatePawns && neighbor.Occupied)))
+                if (edge.Active)
                 {
-                    var neighborCostPlusOne = bestChoice.AStarCostValue + 1;
-                    bool inOpenList = openList.Contains(neighbor);
+                    var neighbor = edge.GetNeighborOf(bestChoice);
 
-                    if (!inOpenList || neighborCostPlusOne < neighbor.AStarCostValue)
+                    if (!(closedList.Contains(neighbor) || (_contemplatePawns && neighbor.Occupied)))
                     {
-                        neighbor.AStarPathParent = bestChoice;
-                        neighbor.AStarCostValue = neighborCostPlusOne;
-                        neighbor.AStarHeuristicValue = AStarHeuristicValue(neighbor, _objectiveRow);
-                        if (!inOpenList)
+                        var neighborCostPlusOne = bestChoice.AStarCostValue + 1;
+                        bool inOpenList = openList.Contains(neighbor);
+
+                        if (!inOpenList || neighborCostPlusOne < neighbor.AStarCostValue)
                         {
-                            openList.Add(neighbor);
+                            neighbor.AStarPathParent = bestChoice;
+                            neighbor.AStarCostValue = neighborCostPlusOne;
+                            neighbor.AStarHeuristicValue = AStarHeuristicValue(neighbor, _objectiveRow);
+                            if (!inOpenList)
+                            {
+                                openList.Add(neighbor);
+                            }
                         }
                     }
                 }

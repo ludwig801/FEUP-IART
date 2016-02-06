@@ -2,12 +2,12 @@
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="Unity.Instance.Unity Editor" />
   <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\GameAI\Minimax.cs">
     <Files>
-      <File FileName="Assets\Scripts\UIManager.cs" Line="42" Column="108" />
-      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="119" Column="26" />
-      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="187" Column="12" />
-      <File FileName="Assets\Scripts\Board\Player.cs" Line="6" Column="17" />
-      <File FileName="Assets\Scripts\AStar.cs" Line="55" Column="5" />
-      <File FileName="Assets\Scripts\Interfaces\IBestMoveAlgorithm.cs" Line="1" Column="36" />
+      <File FileName="Assets\Scripts\Board\GameBoard.cs" Line="84" Column="14" />
+      <File FileName="Assets\Scripts\GameAI\Minimax.cs" Line="78" Column="10" />
+      <File FileName="Assets\Scripts\Libraries\Names.cs" Line="18" Column="41" />
+      <File FileName="Assets\Scripts\AStar.cs" Line="77" Column="54" />
+      <File FileName="Assets\Scripts\UIManager.cs" Line="78" Column="54" />
+      <File FileName="Assets\Scripts\GameAI\MinimaxNode.cs" Line="16" Column="9" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

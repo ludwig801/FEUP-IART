@@ -10,7 +10,7 @@ public class UIManager : MonoBehaviour
     public Toggle Player1Starts, Player1IsCPU, Player2IsCPU;
     public Slider DifficultySlider;
     public Image PlayerColor;
-    public Text DifficultyLabel, Player, InfoText;
+    public Text DifficultyLabel, Player, InfoText, DebugTextPlayer0, DebugTextPlayer1;
     public string[] Difficulties = new string[]
     {
         "Normal",
@@ -24,6 +24,8 @@ public class UIManager : MonoBehaviour
         DifficultySlider.minValue = 0;
         DifficultySlider.value = 0;
         DifficultySlider.maxValue = Difficulties.Length - 1;
+
+        StartCoroutine(UpdateHeuristicValues());
     }
 
     void Update()
@@ -63,6 +65,21 @@ public class UIManager : MonoBehaviour
             PlayerColor.color = Color.white;
             Player.text = "No Player Selected";
             InfoText.text = "";   
+        }
+    }
+
+    IEnumerator UpdateHeuristicValues()
+    {
+        while (true)
+        {
+            if (GameBoard.Ongoing)
+            {
+                DebugTextPlayer0.text = "Player 0: " + GameBoard.Minimax.CalculateHeuristicValue(0);
+                yield return new WaitForEndOfFrame();
+                DebugTextPlayer1.text = "Player 1: " + GameBoard.Minimax.CalculateHeuristicValue(1);
+            }
+
+            yield return new WaitForSeconds(1f);
         }
     }
 }

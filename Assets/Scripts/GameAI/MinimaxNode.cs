@@ -3,16 +3,16 @@ using System.Collections;
 
 public class MinimaxNode
 {
-    public bool isMaximizer;
-    public float alpha, beta;
-    public float heuristicValue;
-    public Move move;
+    public bool IsMaximizer;
+    public float Alpha, Beta;
+    public float HeuristicValue;
+    public Move AssociatedMove;
 
     public MinimaxNode(bool isMaximizer)
     {
-        this.isMaximizer = isMaximizer;
-        this.alpha = float.MinValue;
-        this.beta = float.MaxValue;
-        this.heuristicValue = isMaximizer ? float.MinValue : float.MaxValue;
+        IsMaximizer = isMaximizer;
+        Alpha = float.MinValue;
+        Beta = float.MaxValue;
+        HeuristicValue = isMaximizer ? float.MinValue : float.MaxValue;
     }
 }
