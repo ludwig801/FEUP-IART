@@ -184,7 +184,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         return (player == 0 ? _gameBoard.Players[0].Pawn.Tile.Row : _gameBoard.Border - _gameBoard.Players[0].Pawn.Tile.Row);
     }
 
-    void SetWeights(float[,] param = null)
+    public void SetWeights(float[,] param = null)
     {
         if (param == null)
         {
