@@ -6,6 +6,10 @@ public class CameraManager : MonoBehaviour
     public Camera Camera;
     [Range(0, 10)]
     public int RotationSpeed;
+    [Range(0, 270)]
+    public int MinRotationHorizontal, MaxRotationHorizontal, InitialRotHorizontal;
+    [Range(305, 355)]
+    public int MinRotationVertical, MaxRotationVertical, InitialRotVertical;
     public bool RotateHorizontal, RotateVertical;
 
     public float EulerHorizontal
@@ -31,7 +35,7 @@ public class CameraManager : MonoBehaviour
     {
         _rotateTo = transform.rotation;
 
-        SetRotationHorizontal(90);
+        SetRotation(InitialRotHorizontal, InitialRotVertical);
     }
 
     void Update()

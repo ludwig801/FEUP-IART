@@ -1,12 +1,10 @@
 ﻿public interface IBestMoveAlgorithm
 {
-    void RunAlgorithm();
+    void RunAlgorithm(GameBoard board);
 
     bool IsRunning();
 
     bool IsFinished();
 
-    bool InErrorState();
-
-    object GetResult();
+    Move GetResult();
 }

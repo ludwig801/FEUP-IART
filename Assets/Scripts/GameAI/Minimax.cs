@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
+using System.Collections;
 
 public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 {
@@ -16,167 +17,134 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     //      H(S) = W(Fi)*Fi(S) + Random;
     //
     [Range(1, 3)]
-    public int Depth;   
+    public int Depth;
     public AStar AStar;
     public float HeuristicValue;
+    [Range(0, 1)]
+    public float YieldTime;
+    [Range(5, 20)]
+    public int MaxAlgorithmTime;
+    public float[,] HeuristicFunctionsWeights;
 
+    int MaxAlgorithmTimeInMilliseconds
+    {
+        get
+        {
+            return MaxAlgorithmTime * 1000;
+        }
+    }
+
+    System.Diagnostics.Stopwatch _timer;
     GameBoard _gameBoard;
-    float[,] _weights;
+    float _bestMoveValue;
     Move _bestMove;
-    bool _running, _finished, _error;
+    [SerializeField]
+    bool _running, _finished;
 
     void Start()
     {
         _gameBoard = GameBoard.Instance;
-        _weights = new float[4, _gameBoard.Players.Count];
-
-//        ReadWeights();
         SetWeights();
+
         _running = false;
         _bestMove = null;
     }
-        
-    public void RunAlgorithm()
+
+    public void RunAlgorithm(GameBoard gameBoard)
     {
+        _gameBoard = gameBoard;
+
+        SetWeights();
+        _bestMoveValue = float.MinValue;
         _bestMove = null;
 
-        var root = new MinimaxNode(true);
-
-        _error = false;
         _running = true;
         _finished = false;
 
-        MinimaxAlphaBeta(root, Depth);
-    }
+        _timer = new System.Diagnostics.Stopwatch();
+        _timer.Start();
 
-    public bool IsRunning()
-    {
-        return _running;
-    }
-
-    public bool IsFinished()
-    {
-        return _finished && _bestMove != null;
-    }
-
-    public bool InErrorState()
-    {
-        return _error;
-    }
-
-    public object GetResult()
-    {
-        _finished = false;
-        _running = false;
-        _error = false;
-        return _bestMove;
-    }
-
-    bool MinimaxAlphaBeta(MinimaxNode node, int depth)
-    {
-        // Terminal condition
-        var isGameOver = _gameBoard.IsGameOver();
-        if (depth <= 0 ||isGameOver)
-        {
-            node.HeuristicValue = CalculateHeuristicValue(_gameBoard.CurrentPlayer);
-            if (isGameOver)
-            {
-                _running = false;
-                _finished = true;  
-            }
-            return true;
-        }
-
-        var moves = _gameBoard.GetCurrentPossibleMoves();
-
-        while(moves.Count > 0)
-        {
-            var move = moves.Dequeue();
-            var child = new MinimaxNode(!node.IsMaximizer);
-
-            if (!_gameBoard.PlayMove(move))
-                continue;
-
-
-            if (IsBoardValid())
-            {
-                child.Alpha = node.Alpha;
-                child.Beta = node.Beta;
-                child.AssociatedMove = move;
-
-                if (!MinimaxAlphaBeta(child, depth - 1))
-                {
-                    _error = true;
-                    return false;
-                }
-
-                if (node.IsMaximizer)
-                {
-                    if ((depth == Depth) && (child.HeuristicValue > node.HeuristicValue))
-                        _bestMove = move;
-                    node.HeuristicValue = Mathf.Max(node.HeuristicValue, child.HeuristicValue);
-                }
-                else
-                {
-                    node.HeuristicValue = Mathf.Min(node.HeuristicValue, child.HeuristicValue);
-                }
-            }
-
-            if (!_gameBoard.UndoMove())
-            {
-                _error = true;
-                return false;
-            }
-
-            if (AlphaBetaCut(node, child))
-                break;
-        }
-
-        return true;
-    }
-
-    bool MinimaxAlphaBetaLinear()
-    {
-        var movesArray = new Stack<Queue<Move>>();
-        var currentDepth = 1;
-        var currentNode = new MinimaxNode(true);
-        movesArray.Push(_gameBoard.GetCurrentPossibleMoves());
-
-        while (true)
-        {
-            var depthMoves = movesArray.Peek();
-            if (depthMoves.Count > 0)
-            {
-                var topMove = depthMoves.Dequeue();
-                _gameBoard.PlayMove(topMove);
-
-                movesArray.Push(_gameBoard.GetCurrentPossibleMoves());
-                currentDepth++;
-            }
-            else
-            {
-                movesArray.Pop();
-                _gameBoard.UndoMove();
-                currentDepth--;
-            }
-
-            // TODO : alphabeta cut
-
-            // Terminal condition
-            if (currentDepth == Depth || _gameBoard.IsGameOver())
-            {
-                currentNode.HeuristicValue = CalculateHeuristicValue(_gameBoard.CurrentPlayer);
-                _gameBoard.UndoMove();
-                currentDepth--;
-
-                // TODO: Evaluate alpha & beta
-            }
-        }
+        MinimaxAlphaBeta(_gameBoard, 0, float.MinValue, float.MaxValue, true, _gameBoard.CurrentPlayer);
 
         _running = false;
         _finished = true;
 
-        return true;
+        _timer.Stop();
+        //Debug.Log("Recursive algorithm took [" + _timer.ElapsedMilliseconds + "]ms to complete");
+    }
+
+    float MinimaxAlphaBeta(GameBoard board, int currentDepth, float alpha, float beta, bool isMaximizer, int player)
+    {
+        if (currentDepth == Depth || board.CheckGameOver())
+            return CalculateHeuristicValue(player);
+
+        if(_timer.ElapsedMilliseconds > MaxAlgorithmTimeInMilliseconds)
+            return CalculateHeuristicValue(player);
+
+        var moves = board.GetCurrentPossibleMoves();
+        var bestValue = 0f;
+
+        if (isMaximizer)
+        {
+            bestValue = float.MinValue;
+            foreach (var move in moves)
+            {
+                if (board.PlayMove(move))
+                {
+                    if (IsBoardValid())
+                    {
+                        bestValue = Mathf.Max(bestValue, MinimaxAlphaBeta(board, currentDepth + 1, alpha, beta, false, player));
+                        CheckIfBestMove(bestValue, currentDepth, move);
+                        alpha = Mathf.Max(alpha, bestValue);
+                        if (beta <= alpha)
+                        {
+                            board.UndoMove();
+                            break;
+                        }
+                    }
+
+                    board.UndoMove();
+                }
+            }
+        }
+        else
+        {
+            bestValue = float.MaxValue;
+            foreach (var move in moves)
+            {
+                if (board.PlayMove(move))
+                {
+                    if (IsBoardValid())
+                    {
+                        bestValue = Mathf.Min(bestValue, MinimaxAlphaBeta(board, currentDepth + 1, alpha, beta, true, player));
+                        CheckIfBestMove(bestValue, currentDepth, move);
+                        beta = Mathf.Min(beta, bestValue);
+                        if (beta <= alpha)
+                        {
+                            board.UndoMove();
+                            break;
+                        }
+                    }
+
+                    board.UndoMove();
+                }
+            }
+        }
+
+        return bestValue;
+    }
+
+    void CheckIfBestMove(float heuristicValue, int currentDepth, Move currentMove)
+    {
+        if (currentDepth != 0)
+            return;
+
+        if (_bestMoveValue < heuristicValue)
+        {
+            //Debug.Log("Found a best move!");
+            _bestMoveValue = heuristicValue;
+            _bestMove = currentMove;
+        }
     }
 
     bool IsBoardValid()
@@ -184,26 +152,23 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         return AStar.CalculateDistancesToObjective();
     }
 
-    bool AlphaBetaCut(MinimaxNode node, MinimaxNode child)
+    void CalculateHeuristicAlphaBeta(MinimaxNode node, float childHeuristicValue)
     {
         if (node.IsMaximizer)
         {
+            node.HeuristicValue = Mathf.Max(node.HeuristicValue, childHeuristicValue);
             node.Alpha = Mathf.Max(node.Alpha, node.HeuristicValue);
-            if (node.Alpha > node.Beta)
-            {
-                return true;
-            }
         }
         else
         {
+            node.HeuristicValue = Mathf.Min(node.HeuristicValue, childHeuristicValue);
             node.Beta = Mathf.Min(node.Beta, node.HeuristicValue);
-            if (node.Alpha > node.Beta)
-            {
-                return true;
-            }
         }
+    }
 
-        return false;
+    bool AlphaBetaCut(MinimaxNode node)
+    {
+        return node.Beta <= node.Alpha;
     }
 
     public float CalculateHeuristicValue(int player)
@@ -211,13 +176,17 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         // F1 & F2
         // Global Objective
         if (!AStar.CalculateDistancesToObjective())
+        {
             return -1;
+        }  
 
         // playerProgressToObjective = 1 - (playerDist / maxStepsToGoal)
         //  - Range: [0, 1]
         //  - The bigger the number, the closer the player is to its objective
         var playerDistanceToObjective = AStar.LastCalculatedResults[player];
-        var maxStepsToGoal = _gameBoard.Size * _gameBoard.Size - 1f;
+        if (playerDistanceToObjective <= 0)
+            return 100;
+        var maxStepsToGoal = (_gameBoard.Size * _gameBoard.Size) - 1f;
         var playerProgressToObjective = 1 - (playerDistanceToObjective / maxStepsToGoal);
 
         // playerProgressToObjectiveVsOpponent = (opponentDist - playerDist) / maxStepsToGoal
@@ -225,12 +194,16 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         //  - The bigger the number, the better is the player's progress, comparing to its opponent
         var opponent = _gameBoard.GetNextPlayer(player);
         var opponentDistanceToObjective = AStar.LastCalculatedResults[opponent];
+        if (opponentDistanceToObjective <= 0)
+            return -100;
         var playerProgressToObjectiveVsOpponent = (opponentDistanceToObjective - playerDistanceToObjective) / maxStepsToGoal;
 
         // F3 & F4
         // Local Objective
         if (!AStar.CalculateDistancesToNextRow())
+        {
             return -1;
+        }
 
         // playerProgressToNextRow = 1 - (playerStepsToNextRow / maxStepsToNextRow)
         //  - Range: [0, 1]
@@ -245,12 +218,12 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         var opponentDistanceToNextRow = AStar.LastCalculatedResults[opponent];
         var playerProgressToNextRowVsOpponent = (opponentDistanceToNextRow - playerDistanceToNextRow) / maxStepsToNextRow;
 
-        var heuristicValueA =  _weights[0, player] * playerProgressToObjective;
-        var heuristicValueB =_weights[1, player] * playerProgressToObjectiveVsOpponent;
-        var heuristicValueC = _weights[2, player] * playerProgressToNextRow;
-        var heuristicValueD = _weights[2, player] * playerProgressToNextRowVsOpponent;
+        var heuristicValueA = HeuristicFunctionsWeights[0, player] * playerProgressToObjective;
+        var heuristicValueB = HeuristicFunctionsWeights[1, player] * playerProgressToObjectiveVsOpponent;
+        var heuristicValueC = HeuristicFunctionsWeights[2, player] * playerProgressToNextRow;
+        var heuristicValueD = HeuristicFunctionsWeights[2, player] * playerProgressToNextRowVsOpponent;
 
-        HeuristicValue = (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) /** Random.Range(0.9f, 1.1f) */;
+        HeuristicValue = (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) * Random.Range(0.96f, 1f);
 
         return HeuristicValue;
     }
@@ -260,41 +233,60 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         return (player == 0 ? _gameBoard.Players[0].Pawn.Tile.Row : _gameBoard.Border - _gameBoard.Players[0].Pawn.Tile.Row);
     }
 
+    public bool IsRunning()
+    {
+        return _running;
+    }
+
+    public bool IsFinished()
+    {
+        return _finished;
+    }
+        
+    public Move GetResult()
+    {
+        _finished = false;
+        return _bestMove;
+    }
+
     public void SetWeights(float[,] param = null)
     {
         if (param == null)
         {
-            _weights[0, 0] = 3f;
-            _weights[1, 0] = 1f;
-            _weights[2, 0] = 0f;
-            _weights[3, 0] = 1f;
+            HeuristicFunctionsWeights = new float[4, _gameBoard.Players.Count];
 
-            _weights[0, 1] = 3f;
-            _weights[1, 1] = 1f;
-            _weights[2, 1] = 0f;
-            _weights[3, 1] = 0f;
+            HeuristicFunctionsWeights[0, 1] = 1.00f;
+            HeuristicFunctionsWeights[1, 1] = 0.75f;
+            HeuristicFunctionsWeights[2, 1] = 0.00f;
+            HeuristicFunctionsWeights[3, 1] = 0.25f;
+
+            HeuristicFunctionsWeights[0, 1] = 1.00f;
+            HeuristicFunctionsWeights[1, 1] = 0.75f;
+            HeuristicFunctionsWeights[2, 1] = 0.00f;
+            HeuristicFunctionsWeights[3, 1] = 0.25f;
+
         }
         else
         {
-            _weights = param;
+            HeuristicFunctionsWeights = param;
         }
     }
 
     void SetWeight(int player, int evalFunctionIndex, float newWeight)
     {
-        _weights[evalFunctionIndex, player] = newWeight;
+        HeuristicFunctionsWeights[evalFunctionIndex, player] = newWeight;
     }
 
     float GetWeight(int player, int evalFunctionIndex)
     {
-        return _weights[evalFunctionIndex, player];
+        return HeuristicFunctionsWeights[evalFunctionIndex, player];
     }
 
     void SaveWeights()
     {
         StreamWriter stream = new StreamWriter(Names.WeightsPath_ + Names.SaveExt, false);
-        stream.WriteLine(_weights[0, 0] + " " + _weights[1, 0] + " " + _weights[2, 0] + " " + _weights[3, 0]);
-        stream.WriteLine(_weights[0, 1] + " " + _weights[1, 1] + " " + _weights[2, 1] + " " + _weights[3, 1]);
+        stream.WriteLine(HeuristicFunctionsWeights[0, 0] + " " + HeuristicFunctionsWeights[1, 0] + " " + HeuristicFunctionsWeights[2, 0] + " " + HeuristicFunctionsWeights[3, 0]);
+        stream.WriteLine(HeuristicFunctionsWeights[0, 1] + " " + HeuristicFunctionsWeights[1, 1] + " " + HeuristicFunctionsWeights[2, 1] + " " + HeuristicFunctionsWeights[3, 1]);
         stream.Close();
     }
 
@@ -308,14 +300,14 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
             string[] w0 = w.Split(' ');
             for (int i = 0; i < w0.Length; i++)
             {
-                _weights[i, 0] = float.Parse(w0[i]);
+                HeuristicFunctionsWeights[i, 0] = float.Parse(w0[i]);
             }
 
             w = stream.ReadLine();
             string[] w1 = w.Split(' ');
             for (int i = 0; i < w1.Length; i++)
             {
-                _weights[i, 1] = float.Parse(w1[i]);
+                HeuristicFunctionsWeights[i, 1] = float.Parse(w1[i]);
             }
 
             stream.Close();

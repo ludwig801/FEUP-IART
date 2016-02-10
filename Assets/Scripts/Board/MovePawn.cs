@@ -10,4 +10,9 @@
         Source = src;
         Destination = dest;
     }
+
+    public override string ToString()
+    {
+        return string.Format("Move Pawn to " + Destination.ToString());
+    }
 }

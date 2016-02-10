@@ -17,5 +17,7 @@ public abstract class Names
 	public const string Edges = "Edges";
     public const string Edge_ = "Edge_";
     public const string WeightsPath_ = "Assets/Statistics/Weights_";
+    public const string WeightsDebugPath_ = "Statistics/Debug_";
     public const string SaveExt = ".sav";
+    public const string SaveDebugExt = ".csv";
 }

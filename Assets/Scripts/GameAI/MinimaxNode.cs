@@ -15,4 +15,9 @@ public class MinimaxNode
         Beta = float.MaxValue;
         HeuristicValue = isMaximizer ? float.MinValue : float.MaxValue;
     }
+
+    public override string ToString()
+    {
+        return string.Format("H: " + HeuristicValue + " (" + Alpha + ", " + Beta + ")");
+    } 
 }

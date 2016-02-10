@@ -22,20 +22,23 @@ public class GameBoard : MonoBehaviour
     [Range(0.25f, 1.25f)]
     public float MinWallWidth;
     [Range(-1, 1)]
-    public int StartingPlayer, CurrentPlayer;
+    public int StartingPlayer, CurrentPlayer, Winner;
     [Range(0, 10)]
     public int MaxWallsPerPlayer;
+    [Range(50, 500)]
+    public int MaxMoves;
     public int MoveCount;
     public Stack<Move> Moves;
     public Move.Types MoveType;
     public Tile FocusedTile;
-    public bool ShowEdges, Ongoing;
+    public bool ShowEdges, Ongoing, IsGameOver;
+    [HideInInspector]
     public List<Edge> Edges;
+    [HideInInspector]
     public List<Wall> Walls;
+    [HideInInspector]
     public List<Player> Players;
     public Tile[,] Tiles;
-    [Range(0f, 2f)]
-    public float WaitForNextCPU;
 
     public int Border { get { return Size - 1; } }
 
@@ -73,25 +76,34 @@ public class GameBoard : MonoBehaviour
 
     void Update()
     {
-        if (Ongoing && !IsGameOver() && Players[CurrentPlayer].IsCpu)
+        if (Ongoing)
         {
-            if (Minimax.IsRunning())
+            IsGameOver = CheckGameOver();
+            if (!IsGameOver && Players[CurrentPlayer].IsCpu)
             {
-                if (Minimax.InErrorState())
+                if (!Minimax.IsRunning())
                 {
-                    Debug.Log("An Error Occurred...");
-                }
-            }
-            else
-            {
-                if (Minimax.IsFinished())
-                {
-                    Move best = Minimax.GetResult() as Move;
-                    PlayMove(best);
-                }
-                else
-                {
-                    Minimax.RunAlgorithm();                 
+                    if (Minimax.IsFinished())
+                    {
+                        //Debug.Log("Detected algorithm finished!");
+                        Move best = Minimax.GetResult();
+                        if (!PlayMove(best))
+                        {
+//                            Debug.Log("Could not play best move: " + best);
+//                            Pause();
+                        }
+//                        else
+//                        {
+//                            Debug.Log("Played best move: " + best);
+//                            Debug.Log("Value for this move: " + Minimax.CalculateHeuristicValue(GetPreviousPlayer(CurrentPlayer)));
+//                        }
+                    }
+                    else
+                    {
+                        //Debug.Log("Trying to get algorithm to run...");
+                        //StartCoroutine(Minimax.RunAlgorithmLinear(this));
+                        Minimax.RunAlgorithm(this);
+                    }
                 }
             }
         }
@@ -119,7 +131,7 @@ public class GameBoard : MonoBehaviour
         if (Input.GetKeyUp(KeyCode.Escape))
             QuitApplication();
 
-        if (!Ongoing || IsGameOver())
+        if (!Ongoing || CheckGameOver())
             return;
 
         if (Players[CurrentPlayer].IsCpu)
@@ -128,8 +140,11 @@ public class GameBoard : MonoBehaviour
         if (Input.GetKeyUp(KeyCode.Tab))
             ChangeToNextMode();
 
-        if (Input.GetKeyUp(KeyCode.Delete))
-            UndoMove();
+        if (Input.GetKeyUp(KeyCode.Delete) || Input.GetKeyUp(KeyCode.Z))
+        {
+            Debug.Log("Undo");
+            UndoMove();           
+        }
 
         if (Input.GetKeyUp(KeyCode.Space))
             OnAction();
@@ -395,18 +410,18 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    void CreateTemporaryEdges(int currentPlayer)
+    void CreateTemporaryEdgesForOtherPlayers(int currentPlayer)
     {
         for (var i = 0; i < Players.Count; i++)
         {
             if (i != currentPlayer)
             {
-                CreateTemporaryEdges(Players[i].Pawn.Tile);
+                CreateTemporaryEdgesForOtherPlayers(Players[i].Pawn.Tile);
             }
         }
     }
 
-    void CreateTemporaryEdges(Tile tile)
+    void CreateTemporaryEdgesForOtherPlayers(Tile tile)
     {
         var neighbors = new List<Tile>();
 
@@ -487,165 +502,6 @@ public class GameBoard : MonoBehaviour
         return true;
     }
 
-    bool CanBeTemporaryNeighbors(Tile a, Tile b, Tile center)
-    {
-//        if (Tile.SameRow(a, b))
-//        {
-//            var left = a.Leftside(b) ? a : b;
-//            var right = a.Leftside(b) ? b : a;
-//
-//            while (!left.Equals(right))
-//            {
-//                if (left.HasWall && left.Wall.Vertical)
-//                {
-//                    return false;
-//                }
-//                
-//                if (IsBoardPosition(left.Row + 1, left.Col))
-//                {
-//                    var above = Tiles[left.Row + 1, left.Col];
-//                    if (above.HasWall && above.Wall.Vertical)
-//                    {
-//                        return false;
-//                    }
-//                }
-//
-//                left = Tiles[left.Row, left.Col + 1];
-//            }
-//
-//            return true;
-//        }
-//        else if (Tile.SameCol(a, b))
-//        {
-//            var below = a.Below(b) ? a : b;
-//            var above = a.Below(b) ? b : a;
-//
-//            while (!above.Equals(below))
-//            {
-//                if (above.HasWall && above.Wall.Horizontal)
-//                {
-//                    return false;
-//                }
-//
-//                if (IsBoardPosition(above.Row, above.Col - 1))
-//                {
-//                    Tile left = Tiles[above.Row, above.Col - 1];
-//                    if (left.HasWall && left.Wall.Horizontal)
-//                    {
-//                        return false;
-//                    }
-//                }
-//
-//                above = Tiles[above.Row - 1, above.Col];
-//            }
-//
-//            return true;
-//        }
-//        else
-//        {
-//            Tile comp = a.Above(b) ? a : b;
-//            Tile notComp = b.Equals(comp) ? a : b;
-//
-//            if (comp.Leftside(notComp))
-//            {
-//                if (comp.Above(center))
-//                {
-//                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
-//                    {
-//                        return false;
-//                    }
-//                    else if (center.HasWall && center.Wall.Vertical)
-//                    {
-//                        return false;
-//                    }
-//                    else if (IsBoardPosition(comp.Row, comp.Col - 1))
-//                    {
-//                        Tile left = Tiles[comp.Row, comp.Col - 1];
-//                        if (left.HasWall && left.Wall.Horizontal)
-//                        {
-//                            return false;
-//                        }
-//                    }
-//                }
-//                else if (comp.Leftside(center))
-//                {
-//                    if (comp.HasWall && (comp.Wall.Horizontal || comp.Wall.Vertical))
-//                    {
-//                        return false;
-//                    }
-//                    else if (center.HasWall && center.Wall.Horizontal)
-//                    {
-//                        return false;
-//                    }
-//                    else if (IsBoardPosition(comp.Row + 1, comp.Col))
-//                    {
-//                        Tile above = Tiles[comp.Row + 1, comp.Col];
-//                        if (above.HasWall && above.Wall.Vertical)
-//                        {
-//                            return false;
-//                        }
-//                    }
-//                }
-//                else
-//                {
-//                    return false;
-//                }
-//            }
-//            else
-//            { // comp rightside to notComp
-//                if (comp.Above(center))
-//                {
-//                    if (comp.HasWall && comp.Wall.Horizontal)
-//                    {
-//                        return false;
-//                    }
-//                    else if (notComp.HasWall && notComp.Wall.Vertical)
-//                    {
-//                        return false;
-//                    }
-//                    else if (IsBoardPosition(comp.Row, comp.Col - 1))
-//                    {
-//                        Tile left = Tiles[comp.Row, comp.Col - 1];
-//                        if (left.HasWall && (left.Wall.Vertical || left.Wall.Horizontal))
-//                        {
-//                            return false;
-//                        }
-//                    }
-//                }
-//                else if (comp.Rightside(center))
-//                {
-//                    if (center.HasWall && (center.Wall.Horizontal || center.Wall.Vertical))
-//                    {
-//                        return false;
-//                    }
-//                    else if (IsBoardPosition(comp.Row, comp.Col - 2))
-//                    {
-//                        Tile left = Tiles[comp.Row, comp.Col - 2];
-//                        if (left.HasWall && left.Wall.Horizontal)
-//                        {
-//                            return false;
-//                        }
-//                    }
-//                    else if (IsBoardPosition(comp.Row + 1, comp.Col - 1))
-//                    {
-//                        Tile left = Tiles[comp.Row + 1, comp.Col - 1];
-//                        if (left.HasWall && left.Wall.Vertical)
-//                        {
-//                            return false;
-//                        }
-//                    }
-//                }
-//                else
-//                {
-//                    return false;
-//                }
-//            }
-//
-//            return true;
-//        }
-        return false;
-    }
-
     public void Pause()
     {
         Ongoing = false;
@@ -672,6 +528,11 @@ public class GameBoard : MonoBehaviour
         RemoveAllWalls();
 
         FocusedTile = Players[CurrentPlayer].Pawn.Tile;
+
+        Minimax.SetWeights();
+
+        MoveCount = 0;
+        IsGameOver = false;
     }
 
     public void FocusTile(int horizontalInput, int verticalInput)
@@ -764,66 +625,92 @@ public class GameBoard : MonoBehaviour
 
     public void OnAction()
     {
-        if (MoveType == Move.Types.PlaceWall)
+        switch (MoveType)
         {
-            if (CreateWall(FocusedTile, _referenceWall.Horizontal))
-                NextTurn();
-        }
-        else if (MoveType == Move.Types.MovePawn)
-        {
-            if (MovePawnTo(Players[CurrentPlayer].Pawn, FocusedTile))
-                NextTurn();
+            case Move.Types.MovePawn:
+                PlayMove(new MovePawn(Players[CurrentPlayer].Pawn, Players[CurrentPlayer].Pawn.Tile, FocusedTile));
+                break;
+
+            case Move.Types.PlaceWall:
+                PlayMove(new PlaceWall(FocusedTile, _referenceWall.Horizontal));
+                break;
         }
     }
 
     public bool PlayMove(Move move)
     {
-        bool moveIsOk = false;
+        if (move == null)
+        {
+            Debug.LogWarning("Move to play is null!");
+            return false;
+        }
 
         if (move.GetType() == typeof(MovePawn))
         {
             var movePawn = move as MovePawn;
-            moveIsOk = MovePawnTo(movePawn.Pawn, movePawn.Destination);
+            if (movePawn.Destination.CanMoveTo(movePawn.Source))
+                MovePawnTo(movePawn.Pawn, movePawn.Destination);
+            else
+                return false;
         }
         else if (move.GetType() == typeof(PlaceWall))
         {
             var placeWall = move as PlaceWall;
-            moveIsOk = CreateWall(placeWall.Tile, placeWall.Horizontal);
-            if (moveIsOk)
-                Players[CurrentPlayer].Walls++;
+            if (CanPlaceWall(placeWall.Tile, placeWall.Horizontal))
+            {
+                PlaceWall(placeWall.Tile, placeWall.Horizontal);
+                Players[CurrentPlayer].Walls++;          
+            }
+            else
+                return false;
         }
 
-        if (moveIsOk)
-        {
-            NextTurn();
-            MoveCount++;         
-        }
+        Moves.Push(move);
+        NextTurn();
+        MoveCount++;         
 
-        return moveIsOk;
+        return true;
     }
 
-    public bool MovePawnTo(Pawn pawn, Tile dest)
+    public bool UndoMove()
     {
-        if (!dest.CanMoveTo(pawn.Tile))
+        if (Moves == null || Moves.Count == 0)
+        {
+            Debug.Log("No moves accounted for...");
             return false;
+        }
 
+        var lastMove = Moves.Peek();
+
+        if (lastMove.GetType() == typeof(MovePawn))
+        {
+            var move = lastMove as MovePawn;
+            MovePawnTo(move.Pawn, move.Source);
+        }
+        else if (lastMove.GetType() == typeof(PlaceWall))
+        {
+            var move = lastMove as PlaceWall;
+            RemoveWall(move.Tile, move.Horizontal);
+            Players[GetPreviousPlayer(CurrentPlayer)].Walls--;
+        }
+            
+        Moves.Pop();
+        PreviousTurn();
+        MoveCount--;
+
+        return true;
+    }
+
+    public void MovePawnTo(Pawn pawn, Tile dest)
+    {
         var src = pawn.Tile;
         src.Occupied = false;
         dest.Occupied = true;
         pawn.Tile = dest;
-
-        Moves.Push(new MovePawn(pawn, src, dest));
-        return true;
     }
 
-    public bool CreateWall(Tile tile, bool horizontal)
+    public void PlaceWall(Tile tile, bool horizontal)
     {
-        if (tile == null)
-            return false;
-
-        if (!CanPlaceWall(tile, horizontal))
-            return false;
-
         var tileEast = Tiles[tile.Row, tile.Col + 1];
         var tileSouth = Tiles[tile.Row - 1, tile.Col];
         var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
@@ -847,38 +734,6 @@ public class GameBoard : MonoBehaviour
         wall.Tile = tile;
         wall.Horizontal = horizontal;
         wall.Free = false;
-
-        Moves.Push(new PlaceWall(tile, horizontal));
-        return true;
-    }
-
-    public bool UndoMove()
-    {
-        if (Moves == null || Moves.Count == 0)
-            return false;
-        
-        var lastMove = Moves.Peek();
-
-        if (lastMove.GetType() == typeof(MovePawn))
-        {
-            var move = lastMove as MovePawn;
-            if (!MovePawnTo(move.Pawn, move.Source))
-                return false;
-        }
-        else if (lastMove.GetType() == typeof(PlaceWall))
-        {
-            var move = lastMove as PlaceWall;
-            if (!RemoveWall(move.Tile, move.Horizontal))
-                return false;
-            Players[GetPreviousPlayer(CurrentPlayer)].Walls--;
-        }
-
-        Moves.Pop();
-        PreviousTurn();
-
-        MoveCount--;
-
-        return true;
     }
 
     public void NextTurn()
@@ -888,7 +743,7 @@ public class GameBoard : MonoBehaviour
         SetPropertiesForAllTiles(false, false, false, false);
 
         CurrentPlayer = GetNextPlayer(CurrentPlayer);
-        CreateTemporaryEdges(CurrentPlayer);
+        CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
         MarkObjectiveRow(CurrentPlayer);
 
         SelectTile(Players[CurrentPlayer].Pawn.Tile);
@@ -898,26 +753,36 @@ public class GameBoard : MonoBehaviour
 
     public void PreviousTurn()
     {
+        _referenceWall.Tile = null;
         RemoveTemporaryEdges();
+        SetPropertiesForAllTiles(false, false, false, false);
 
         CurrentPlayer = GetPreviousPlayer(CurrentPlayer);
+        CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
 
-        for (var i = 0; i < Players.Count; i++)
-        {
-            if (i != CurrentPlayer)
-            {
-                CreateTemporaryEdges(Players[i].Pawn.Tile);
-            }
-        }
+        SelectTile(Players[CurrentPlayer].Pawn.Tile);
+        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
+        MoveType = Move.Types.MovePawn;
+
+        MarkObjectiveRow(CurrentPlayer);
     }
 
-    public bool IsGameOver()
+    public bool CheckGameOver()
     {
-        foreach (var player in Players)
+        for (var i = 0; i < Players.Count; i++)
         {
+            var player = Players[i];
             if (player.Pawn.Tile.Row == player.ObjectiveRow)
-                return true;
+            {
+                Winner = i;
+                return true; 
+            }
         }
+
+        Winner = -1;
+
+        if (MoveCount >= MaxMoves)
+            return true;
 
         return false;
     }

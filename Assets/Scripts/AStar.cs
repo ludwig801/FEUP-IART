@@ -42,12 +42,19 @@ public class AStar : MonoBehaviour
         {
             _startingTile = _gameBoard.Players[i].Pawn.Tile;
             _objectiveRow = _gameBoard.Players[i].ObjectiveRow;
-            _contemplatePawns = false;
-
-            if (RunAlgorithm())
-                LastCalculatedResults[i] = _output;
+            if (_startingTile.Row == _objectiveRow)
+            {
+                LastCalculatedResults[i] = 0;
+            }
             else
-                return false;
+            {
+                _contemplatePawns = false;
+
+                if (RunAlgorithm())
+                    LastCalculatedResults[i] = _output;
+                else
+                    return false;
+            }
         }
 
         return true;
