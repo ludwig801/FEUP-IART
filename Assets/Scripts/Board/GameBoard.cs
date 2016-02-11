@@ -12,6 +12,7 @@ public class GameBoard : MonoBehaviour
     public Transform TilesTransform, EdgesTransform, VisualBoard, WallsTransform;
     public GameObject TilePrefab, EdgePrefab, WallPrefab, FocusPrefab;
     public Minimax Minimax;
+    public AStar AStar;
     public CameraManager Camera;
     [Range(9, 9)]
     public int Size;
@@ -484,6 +485,9 @@ public class GameBoard : MonoBehaviour
         
         if (!IsBoardPosition(tile.Row - 1, tile.Col + 1))
             return false;
+
+        if (Players[CurrentPlayer].Walls <= 0)
+            return false;
         
         if (horizontal)
         {
@@ -533,7 +537,7 @@ public class GameBoard : MonoBehaviour
 
         foreach (var player in Players)
         {
-            player.Walls = 0;
+            player.Walls = MaxWallsPerPlayer;
         }
             
         RemoveAllWalls();
@@ -588,7 +592,7 @@ public class GameBoard : MonoBehaviour
                 moves.Enqueue(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
         }
 
-        var hasWalls = MaxWallsPerPlayer - Players[CurrentPlayer].Walls > 0;
+        var hasWalls = (Players[CurrentPlayer].Walls > 0);
         if (hasWalls)
         {
             // Place horizontal walls
@@ -670,7 +674,7 @@ public class GameBoard : MonoBehaviour
             if (CanPlaceWall(placeWall.Tile, placeWall.Horizontal))
             {
                 PlaceWall(placeWall.Tile, placeWall.Horizontal);
-                Players[CurrentPlayer].Walls++;          
+                Players[CurrentPlayer].Walls--;          
             }
             else
                 return false;
@@ -678,7 +682,13 @@ public class GameBoard : MonoBehaviour
 
         Moves.Push(move);
         NextTurn();
-        MoveCount++;         
+        MoveCount++;       
+
+        if (!IsBoardValid())
+        {
+            UndoMove();
+            return false;
+        }
 
         return true;
     }
@@ -702,7 +712,7 @@ public class GameBoard : MonoBehaviour
         {
             var move = lastMove as PlaceWall;
             RemoveWall(move.Tile, move.Horizontal);
-            Players[GetPreviousPlayer(CurrentPlayer)].Walls--;
+            Players[GetPreviousPlayer(CurrentPlayer)].Walls++;
         }
             
         Moves.Pop();
@@ -710,6 +720,11 @@ public class GameBoard : MonoBehaviour
         MoveCount--;
 
         return true;
+    }
+
+    bool IsBoardValid()
+    {
+        return AStar.CalculateDistancesToObjective();
     }
 
     public void MovePawnTo(Pawn pawn, Tile dest)

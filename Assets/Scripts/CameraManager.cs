@@ -63,6 +63,12 @@ public class CameraManager : MonoBehaviour
     void UpdateVisualElements()
     {
         transform.rotation = Quaternion.Lerp(transform.rotation, _rotateTo, RotationSpeed > 0 ? RotationSpeed * Time.deltaTime : 1);
+
+//        var camPos = new Vector3(0, 0, 0);
+//        var ratio = Screen.width / Screen.height;
+//        camPos.y = ratio * 20f;
+//        camPos.x = camPos.y * -0.5f;
+//        Camera.transform.position = camPos;
     }
 
     void ApplyRotation(int horizontalAmount, int verticalAmount)

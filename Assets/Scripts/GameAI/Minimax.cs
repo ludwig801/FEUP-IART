@@ -63,7 +63,6 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         _timer.Start();
 
         MaxAlgorithmTime = Depth * 5;
-
         MinimaxAlphaBeta(_gameBoard, 0, float.MinValue, float.MaxValue, true, _gameBoard.CurrentPlayer);
 
         _running = false;
@@ -82,52 +81,27 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
             return CalculateHeuristicValue(player);
 
         var moves = board.GetCurrentPossibleMoves();
-        var bestValue = 0f;
-
-        if (isMaximizer)
+        var bestValue = isMaximizer ? float.MinValue : float.MaxValue;
+        foreach (var move in moves)
         {
-            bestValue = float.MinValue;
-            foreach (var move in moves)
+            if (board.PlayMove(move))
             {
-                if (board.PlayMove(move))
-                {
-                    if (IsBoardValid())
-                    {
-                        bestValue = Mathf.Max(bestValue, MinimaxAlphaBeta(board, currentDepth + 1, alpha, beta, false, player));
-                        CheckIfBestMove(bestValue, currentDepth, move);
-                        alpha = Mathf.Max(alpha, bestValue);
-                        if (beta <= alpha)
-                        {
-                            board.UndoMove();
-                            break;
-                        }
-                    }
+                if (isMaximizer)
+                    bestValue = Mathf.Max(bestValue, MinimaxAlphaBeta(board, currentDepth + 1, alpha, beta, false, player));
+                else
+                    bestValue = Mathf.Min(bestValue, MinimaxAlphaBeta(board, currentDepth + 1, alpha, beta, true, player));
+                
+                CheckIfBestMove(bestValue, currentDepth, move);
 
-                    board.UndoMove();
-                }
-            }
-        }
-        else
-        {
-            bestValue = float.MaxValue;
-            foreach (var move in moves)
-            {
-                if (board.PlayMove(move))
-                {
-                    if (IsBoardValid())
-                    {
-                        bestValue = Mathf.Min(bestValue, MinimaxAlphaBeta(board, currentDepth + 1, alpha, beta, true, player));
-                        CheckIfBestMove(bestValue, currentDepth, move);
-                        beta = Mathf.Min(beta, bestValue);
-                        if (beta <= alpha)
-                        {
-                            board.UndoMove();
-                            break;
-                        }
-                    }
+                if (isMaximizer)
+                    alpha = Mathf.Max(alpha, bestValue);
+                else
+                    beta = Mathf.Min(beta, bestValue);
 
-                    board.UndoMove();
-                }
+                board.UndoMove();
+
+                if (beta <= alpha)
+                    break;
             }
         }
 
@@ -145,11 +119,6 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
             _bestMoveValue = heuristicValue;
             _bestMove = currentMove;
         }
-    }
-
-    bool IsBoardValid()
-    {
-        return AStar.CalculateDistancesToObjective();
     }
 
     void CalculateHeuristicAlphaBeta(MinimaxNode node, float childHeuristicValue)
@@ -176,9 +145,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         // F1 & F2
         // Global Objective
         if (!AStar.CalculateDistancesToObjective())
-        {
-            return -1;
-        }  
+            return 0;
 
         // playerProgressToObjective = 1 - (playerDist / maxStepsToGoal)
         //  - Range: [0, 1]
@@ -201,14 +168,13 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         // F3 & F4
         // Local Objective
         if (!AStar.CalculateDistancesToNextRow())
-        {
-            return -1;
-        }
+            return 0;
 
         // playerProgressToNextRow = 1 - (playerStepsToNextRow / maxStepsToNextRow)
         //  - Range: [0, 1]
         //  - The bigger the number, the closest the player is to the objective row
         var maxStepsToNextRow = _gameBoard.Size - 1f;
+
         var playerDistanceToNextRow = AStar.LastCalculatedResults[player];
         var playerProgressToNextRow = 1 - (playerDistanceToNextRow / maxStepsToNextRow);
 
@@ -255,16 +221,15 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         {
             HeuristicFunctionsWeights = new float[4, _gameBoard.Players.Count];
 
-            HeuristicFunctionsWeights[0, 1] = 1.00f;
-            HeuristicFunctionsWeights[1, 1] = 0.75f;
-            HeuristicFunctionsWeights[2, 1] = 0.00f;
-            HeuristicFunctionsWeights[3, 1] = 0.25f;
+            HeuristicFunctionsWeights[0, 0] = 1.00f;
+            HeuristicFunctionsWeights[1, 0] = 0.75f;
+            HeuristicFunctionsWeights[2, 0] = 0.00f;
+            HeuristicFunctionsWeights[3, 0] = 0.25f;
 
             HeuristicFunctionsWeights[0, 1] = 1.00f;
             HeuristicFunctionsWeights[1, 1] = 0.75f;
             HeuristicFunctionsWeights[2, 1] = 0.00f;
             HeuristicFunctionsWeights[3, 1] = 0.25f;
-
         }
         else
         {

@@ -8,9 +8,4 @@ public class Player : MonoBehaviour
     public int Walls;
     public Pawn Pawn;
     public int ObjectiveRow;
-
-    void Start()
-    {
-        Walls = 0;
-    }
 }

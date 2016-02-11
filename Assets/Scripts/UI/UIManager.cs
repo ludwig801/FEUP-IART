@@ -23,7 +23,7 @@ public class UIManager : MonoBehaviour
     public Text DifficultyLabel, Player, InfoText;
     public Button PauseBtn, ResumeBtn, StartBtn;
     // Debug
-  public Toggle DebugToggle;
+    public Toggle DebugToggle;
     public Slider[] HeuristicsPlayer, HeuristicsOpponent;
 
     void Start()
@@ -56,32 +56,50 @@ public class UIManager : MonoBehaviour
 
         if (GameBoard.Ongoing)
         {
-            var CurrentPlayer = GameBoard.Players[GameBoard.CurrentPlayer];
-            PlayerColor.color = CurrentPlayer.Color;
-            Player.text = "Player " + (GameBoard.CurrentPlayer + 1) + (CurrentPlayer.IsCpu ? " [CPU]" : "");
-            if (!CurrentPlayer.IsCpu)
+            if (GameBoard.IsGameOver)
             {
-                switch (GameBoard.MoveType)
+                if (GameBoard.Winner < 0)
                 {
-                    case Move.Types.MovePawn:
-                        InfoText.text = "Move your pawn...";
-                        break;
-
-                    case Move.Types.PlaceWall:
-                        InfoText.text = "Place your wall...";
-                        break;
-                }  
+                    PlayerColor.color = Color.clear;
+                    Player.text = "";
+                    InfoText.text = "Game Over: Draw";
+                }
+                else
+                {
+                    PlayerColor.color = GameBoard.Players[GameBoard.Winner].Color;
+                    Player.text = "Winner: Player " + (GameBoard.Winner + 1);
+                    InfoText.text = "Game Over";
+                }
             }
             else
             {
-                InfoText.text = "CPU move...";
+                var CurrentPlayer = GameBoard.Players[GameBoard.CurrentPlayer];
+                PlayerColor.color = CurrentPlayer.Color;
+                Player.text = "Player " + (GameBoard.CurrentPlayer + 1) + (CurrentPlayer.IsCpu ? " [CPU]" : "");
+                if (!CurrentPlayer.IsCpu)
+                {
+                    switch (GameBoard.MoveType)
+                    {
+                        case Move.Types.MovePawn:
+                            InfoText.text = "Move your pawn...";
+                            break;
+
+                        case Move.Types.PlaceWall:
+                            InfoText.text = "Place your wall... (" + GameBoard.Players[GameBoard.CurrentPlayer].Walls + " left)";
+                            break;
+                    }  
+                }
+                else
+                {
+                    InfoText.text = "CPU move...";
+                }
             }
         }
         else
         {
             PlayerColor.color = Color.clear;
             Player.text = "";
-            InfoText.text = "Game Not Running";  
+            InfoText.text = "Game Not Running";
         }
 
 
