@@ -48,8 +48,8 @@ public class UIManager : MonoBehaviour
         ResumeBtn.gameObject.SetActive(!GameBoard.Ongoing);
         //StartBtn.gameObject.SetActive(GameBoard.Ongoing);
 
-        Player1IsCPU.isOn = GameBoard.Players[0].IsCpu;
-        Player2IsCPU.isOn = GameBoard.Players[1].IsCpu;
+        Player1IsCPU.isOn = GameBoard.GetPlayer(0).IsCpu;
+        Player2IsCPU.isOn = GameBoard.GetPlayer(1).IsCpu;
         DifficultySlider.value = GameBoard.Minimax.Depth;
         DifficultyLabel.text = "Level: " + Difficulties[GameBoard.Minimax.Depth - 1];
         Player1Starts.isOn = (GameBoard.StartingPlayer == 0);
@@ -66,26 +66,26 @@ public class UIManager : MonoBehaviour
                 }
                 else
                 {
-                    PlayerColor.color = GameBoard.Players[GameBoard.Winner].Color;
+                    PlayerColor.color = GameBoard.GetPlayer(GameBoard.Winner).Color;
                     Player.text = "Winner: Player " + (GameBoard.Winner + 1);
                     InfoText.text = "Game Over";
                 }
             }
             else
             {
-                var CurrentPlayer = GameBoard.Players[GameBoard.CurrentPlayer];
-                PlayerColor.color = CurrentPlayer.Color;
-                Player.text = "Player " + (GameBoard.CurrentPlayer + 1) + (CurrentPlayer.IsCpu ? " [CPU]" : "");
-                if (!CurrentPlayer.IsCpu)
+                var currentPlayer = GameBoard.GetCurrentPlayer();
+                PlayerColor.color = currentPlayer.Color;
+                Player.text = "Player " + (GameBoard.CurrentPlayer + 1) + (currentPlayer.IsCpu ? " [CPU]" : "");
+                if (!currentPlayer.IsCpu)
                 {
-                    switch (GameBoard.MoveType)
+                    switch (GameBoard.CurrentMoveType)
                     {
                         case Move.Types.MovePawn:
                             InfoText.text = "Move your pawn...";
                             break;
 
                         case Move.Types.PlaceWall:
-                            InfoText.text = "Place your wall... (" + GameBoard.Players[GameBoard.CurrentPlayer].Walls + " left)";
+                            InfoText.text = "Place your wall... (" + currentPlayer.Walls + " left)";
                             break;
                     }  
                 }
@@ -131,8 +131,8 @@ public class UIManager : MonoBehaviour
 
     public void OnValueChanged()
     {
-        GameBoard.Players[0].IsCpu = Player1IsCPU.isOn;
-        GameBoard.Players[1].IsCpu = Player2IsCPU.isOn;
+        GameBoard.GetPlayer(0).IsCpu = Player1IsCPU.isOn;
+        GameBoard.GetPlayer(1).IsCpu = Player2IsCPU.isOn;
         var sliderVal = (int)DifficultySlider.value;
         GameBoard.Minimax.Depth = sliderVal;
         DifficultyLabel.text = "Level: " + Difficulties[sliderVal - 1];

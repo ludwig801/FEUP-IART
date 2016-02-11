@@ -3,7 +3,12 @@ using System.Collections.Generic;
 
 public class AStar : MonoBehaviour
 {
-    public int[] LastCalculatedResults;
+    public int[] LastCalculatedResults
+    {
+        get;
+
+        private set;
+    }
 
     GameBoard _gameBoard;
     Tile _startingTile;
@@ -17,12 +22,13 @@ public class AStar : MonoBehaviour
 
     public bool CalculateDistancesToNextRow()
     {
-        LastCalculatedResults = new int[_gameBoard.Players.Count];
+        LastCalculatedResults = new int[_gameBoard.PlayersCount];
 
-        for (var i = 0; i < _gameBoard.Players.Count; i++)
+        for (var i = 0; i < _gameBoard.PlayersCount; i++)
         {
-            _startingTile =  _gameBoard.Players[i].Pawn.Tile;
-            _objectiveRow = _startingTile.Row + (_startingTile.Row < _gameBoard.Players[i].ObjectiveRow ? 1 : -1);
+            var player = _gameBoard.GetPlayer(i);
+            _startingTile =  player.Pawn.Tile;
+            _objectiveRow = _startingTile.Row + (_startingTile.Row < player.ObjectiveRow ? 1 : -1);
             _contemplatePawns = true;
 
             if (RunAlgorithm())
@@ -36,12 +42,13 @@ public class AStar : MonoBehaviour
 
     public bool CalculateDistancesToObjective()
     {
-        LastCalculatedResults = new int[_gameBoard.Players.Count];
+        LastCalculatedResults = new int[_gameBoard.PlayersCount];
 
-        for (var i = 0; i < _gameBoard.Players.Count; i++)
+        for (var i = 0; i < _gameBoard.PlayersCount; i++)
         {
-            _startingTile = _gameBoard.Players[i].Pawn.Tile;
-            _objectiveRow = _gameBoard.Players[i].ObjectiveRow;
+            var player = _gameBoard.GetPlayer(i);
+            _startingTile = player.Pawn.Tile;
+            _objectiveRow = player.ObjectiveRow;
             if (_startingTile.Row == _objectiveRow)
             {
                 LastCalculatedResults[i] = 0;

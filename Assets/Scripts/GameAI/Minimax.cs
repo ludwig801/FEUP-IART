@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Collections;
+using System.Diagnostics;
 
+[RequireComponent(typeof(AStar))]
 public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 {
     // >> Heuristics <<
@@ -18,11 +20,10 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     //
     [Range(1, 3)]
     public int Depth;
-    public AStar AStar;
-    public float HeuristicValue;
     [Range(5, 15)]
     public int MaxAlgorithmTime;
-    public float[,] HeuristicFunctionsWeights;
+
+
 
     int MaxAlgorithmTimeInMilliseconds
     {
@@ -32,9 +33,11 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         }
     }
 
-    System.Diagnostics.Stopwatch _timer;
+    Stopwatch _timer;
+    AStar _aStar;
     GameBoard _gameBoard;
     float _bestMoveValue;
+    float[,] _heuristicFunctionsWeights;
     Move _bestMove;
     [SerializeField]
     bool _running, _finished;
@@ -43,6 +46,8 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     {
         _gameBoard = GameBoard.Instance;
         SetWeights();
+
+        _aStar = GetComponent<AStar>();
 
         _running = false;
         _bestMove = null;
@@ -74,7 +79,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 
     float MinimaxAlphaBeta(GameBoard board, int currentDepth, float alpha, float beta, bool isMaximizer, int player)
     {
-        if (currentDepth == Depth || board.CheckGameOver())
+        if (currentDepth == Depth || board.GameOver())
             return CalculateHeuristicValue(player);
 
         if(_timer.ElapsedMilliseconds > MaxAlgorithmTimeInMilliseconds)
@@ -144,13 +149,13 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     {
         // F1 & F2
         // Global Objective
-        if (!AStar.CalculateDistancesToObjective())
+        if (!_aStar.CalculateDistancesToObjective())
             return 0;
 
         // playerProgressToObjective = 1 - (playerDist / maxStepsToGoal)
         //  - Range: [0, 1]
         //  - The bigger the number, the closer the player is to its objective
-        var playerDistanceToObjective = AStar.LastCalculatedResults[player];
+        var playerDistanceToObjective = _aStar.LastCalculatedResults[player];
         if (playerDistanceToObjective <= 0)
             return 100;
         var maxStepsToGoal = (_gameBoard.Size * _gameBoard.Size) - 1f;
@@ -160,14 +165,14 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         //  - Range: [0, 1]
         //  - The bigger the number, the better is the player's progress, comparing to its opponent
         var opponent = _gameBoard.GetNextPlayer(player);
-        var opponentDistanceToObjective = AStar.LastCalculatedResults[opponent];
+        var opponentDistanceToObjective = _aStar.LastCalculatedResults[opponent];
         if (opponentDistanceToObjective <= 0)
             return -100;
         var playerProgressToObjectiveVsOpponent = (opponentDistanceToObjective - playerDistanceToObjective) / maxStepsToGoal;
 
         // F3 & F4
         // Local Objective
-        if (!AStar.CalculateDistancesToNextRow())
+        if (!_aStar.CalculateDistancesToNextRow())
             return 0;
 
         // playerProgressToNextRow = 1 - (playerStepsToNextRow / maxStepsToNextRow)
@@ -175,28 +180,26 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         //  - The bigger the number, the closest the player is to the objective row
         var maxStepsToNextRow = _gameBoard.Size - 1f;
 
-        var playerDistanceToNextRow = AStar.LastCalculatedResults[player];
+        var playerDistanceToNextRow = _aStar.LastCalculatedResults[player];
         var playerProgressToNextRow = 1 - (playerDistanceToNextRow / maxStepsToNextRow);
 
         // playerProgressToNextRowVsOpponent = (opponentDistToNextRow - playerDistToNextRow) / maxStepsToNextRow
         //  - Range: [0, 1]
         //  - The bigger the number, the better is the player's local progress, comparing to its opponent
-        var opponentDistanceToNextRow = AStar.LastCalculatedResults[opponent];
+        var opponentDistanceToNextRow = _aStar.LastCalculatedResults[opponent];
         var playerProgressToNextRowVsOpponent = (opponentDistanceToNextRow - playerDistanceToNextRow) / maxStepsToNextRow;
 
-        var heuristicValueA = HeuristicFunctionsWeights[0, player] * playerProgressToObjective;
-        var heuristicValueB = HeuristicFunctionsWeights[1, player] * playerProgressToObjectiveVsOpponent;
-        var heuristicValueC = HeuristicFunctionsWeights[2, player] * playerProgressToNextRow;
-        var heuristicValueD = HeuristicFunctionsWeights[2, player] * playerProgressToNextRowVsOpponent;
+        var heuristicValueA = _heuristicFunctionsWeights[0, player] * playerProgressToObjective;
+        var heuristicValueB = _heuristicFunctionsWeights[1, player] * playerProgressToObjectiveVsOpponent;
+        var heuristicValueC = _heuristicFunctionsWeights[2, player] * playerProgressToNextRow;
+        var heuristicValueD = _heuristicFunctionsWeights[2, player] * playerProgressToNextRowVsOpponent;
 
-        HeuristicValue = (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) * Random.Range(0.96f, 1f);
-
-        return HeuristicValue;
+        return (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) * Random.Range(0.96f, 1f);
     }
 
     int GetPlayerRowAbs(int player)
     {
-        return (player == 0 ? _gameBoard.Players[0].Pawn.Tile.Row : _gameBoard.Border - _gameBoard.Players[0].Pawn.Tile.Row);
+        return (player == 0 ? _gameBoard.GetPlayer(0).Pawn.Tile.Row : _gameBoard.Border - _gameBoard.GetPlayer(1).Pawn.Tile.Row);
     }
 
     public bool IsRunning()
@@ -219,39 +222,39 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     {
         if (param == null)
         {
-            HeuristicFunctionsWeights = new float[4, _gameBoard.Players.Count];
+            _heuristicFunctionsWeights = new float[4, _gameBoard.PlayersCount];
 
-            HeuristicFunctionsWeights[0, 0] = 1.00f;
-            HeuristicFunctionsWeights[1, 0] = 0.75f;
-            HeuristicFunctionsWeights[2, 0] = 0.00f;
-            HeuristicFunctionsWeights[3, 0] = 0.25f;
+            _heuristicFunctionsWeights[0, 0] = 1.00f;
+            _heuristicFunctionsWeights[1, 0] = 0.75f;
+            _heuristicFunctionsWeights[2, 0] = 0.00f;
+            _heuristicFunctionsWeights[3, 0] = 0.25f;
 
-            HeuristicFunctionsWeights[0, 1] = 1.00f;
-            HeuristicFunctionsWeights[1, 1] = 0.75f;
-            HeuristicFunctionsWeights[2, 1] = 0.00f;
-            HeuristicFunctionsWeights[3, 1] = 0.25f;
+            _heuristicFunctionsWeights[0, 1] = 1.00f;
+            _heuristicFunctionsWeights[1, 1] = 0.75f;
+            _heuristicFunctionsWeights[2, 1] = 0.00f;
+            _heuristicFunctionsWeights[3, 1] = 0.25f;
         }
         else
         {
-            HeuristicFunctionsWeights = param;
+            _heuristicFunctionsWeights = param;
         }
     }
 
     void SetWeight(int player, int evalFunctionIndex, float newWeight)
     {
-        HeuristicFunctionsWeights[evalFunctionIndex, player] = newWeight;
+        _heuristicFunctionsWeights[evalFunctionIndex, player] = newWeight;
     }
 
     float GetWeight(int player, int evalFunctionIndex)
     {
-        return HeuristicFunctionsWeights[evalFunctionIndex, player];
+        return _heuristicFunctionsWeights[evalFunctionIndex, player];
     }
 
     void SaveWeights()
     {
         StreamWriter stream = new StreamWriter(Names.WeightsPath_ + Names.SaveExt, false);
-        stream.WriteLine(HeuristicFunctionsWeights[0, 0] + " " + HeuristicFunctionsWeights[1, 0] + " " + HeuristicFunctionsWeights[2, 0] + " " + HeuristicFunctionsWeights[3, 0]);
-        stream.WriteLine(HeuristicFunctionsWeights[0, 1] + " " + HeuristicFunctionsWeights[1, 1] + " " + HeuristicFunctionsWeights[2, 1] + " " + HeuristicFunctionsWeights[3, 1]);
+        stream.WriteLine(_heuristicFunctionsWeights[0, 0] + " " + _heuristicFunctionsWeights[1, 0] + " " + _heuristicFunctionsWeights[2, 0] + " " + _heuristicFunctionsWeights[3, 0]);
+        stream.WriteLine(_heuristicFunctionsWeights[0, 1] + " " + _heuristicFunctionsWeights[1, 1] + " " + _heuristicFunctionsWeights[2, 1] + " " + _heuristicFunctionsWeights[3, 1]);
         stream.Close();
     }
 
@@ -265,14 +268,14 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
             string[] w0 = w.Split(' ');
             for (int i = 0; i < w0.Length; i++)
             {
-                HeuristicFunctionsWeights[i, 0] = float.Parse(w0[i]);
+                _heuristicFunctionsWeights[i, 0] = float.Parse(w0[i]);
             }
 
             w = stream.ReadLine();
             string[] w1 = w.Split(' ');
             for (int i = 0; i < w1.Length; i++)
             {
-                HeuristicFunctionsWeights[i, 1] = float.Parse(w1[i]);
+                _heuristicFunctionsWeights[i, 1] = float.Parse(w1[i]);
             }
 
             stream.Close();

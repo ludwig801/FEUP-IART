@@ -2,56 +2,133 @@
 using System.Collections;
 using System.Collections.Generic;
 
+[RequireComponent(typeof(Minimax))]
+[RequireComponent(typeof(AStar))]
 public class GameBoard : MonoBehaviour
 {
     // Singleton
     public static GameBoard Instance { get { return _instance; } }
-
     static GameBoard _instance;
 
-    public Transform TilesTransform, EdgesTransform, VisualBoard, WallsTransform;
-    public GameObject TilePrefab, EdgePrefab, WallPrefab, FocusPrefab;
-    public Minimax Minimax;
-    public AStar AStar;
-    public CameraManager Camera;
+    // Private variables
+    [SerializeField] Transform TilesTransform;
+    [SerializeField] Transform EdgesTransform;
+    [SerializeField] Transform VisualBoard;
+    [SerializeField] Transform WallsTransform;
+    [SerializeField] GameObject TilePrefab;
+    [SerializeField] GameObject EdgePrefab;
+    [SerializeField] GameObject WallPrefab;
+    [SerializeField] GameObject FocusPrefab;
+    [SerializeField] CameraManager Camera;
+    [SerializeField] List<Player> _players;
     [Range(9, 9)]
-    public int Size;
+    [SerializeField] int _size = 9;
     [Range(1, 5)]
-    public int TileSize;
+    [SerializeField] int _tileSize;
     [Range(0, 1)]
-    public float TileSpacingFactor;
+    [SerializeField] float _tileSpacingFactor;
     [Range(0.25f, 1.25f)]
-    public float MinWallWidth;
-    [Range(-1, 1)]
-    public int StartingPlayer, CurrentPlayer, Winner;
+    [SerializeField] float _minWallWidth;
     [Range(0, 10)]
-    public int MaxWallsPerPlayer;
+    [SerializeField] int _numWallsPerPlayer;
     [Range(50, 500)]
-    public int MaxMoves;
-    public int MoveCount;
-    public Stack<Move> Moves;
-    public Move.Types MoveType;
-    public Tile FocusedTile;
-    public bool ShowEdges, Ongoing, IsGameOver;
-    [HideInInspector]
-    public List<Edge> Edges;
-    [HideInInspector]
-    public List<Wall> Walls;
-    [HideInInspector]
-    public List<Player> Players;
-    public Tile[,] Tiles;
+    [SerializeField] int _maxMovesPerGame;
     [Range(0, 2)]
-    public int WaitingTimeBeforeCPU;
+    [SerializeField] int _cpuTurnWait = 1;
     [Range(1, 10)]
-    public int VisualBoardScaleMult;
-
-    public int Border { get { return Size - 1; } }
-
+    [SerializeField] int _boardScaleMultiplier = 5;
+    Minimax _minimax;
+    AStar _aStar;
     Transform _referenceFocused;
     Wall _referenceWall;
     Quaternion _rotateCameraPivotTo;
+    Stack<Move> _moves;
+    List<Edge> _edges;
+    List<Wall> _walls;
+    Tile[,] _tiles;
+    Tile _focusedTile;
     float _waitForNextPlay;
 
+    // Public variables
+    [Range(-1, 1)]
+    public int StartingPlayer;
+    public bool ShowEdges, Ongoing, IsGameOver;
+
+    // Properties
+    public int PlayersCount
+    {
+        get
+        {
+            return _players.Count;
+        }
+    }
+
+    public int Size
+    {
+        get
+        {
+            return _size;
+        }
+    }
+
+    public int Border
+    {
+        get
+        {
+            return Size - 1;
+        }
+    }
+
+    public int TileSize
+    {
+        get
+        {
+            return _tileSize;
+        }
+    }
+
+    public float TileSpacing
+    {
+        get
+        {
+            return _tileSpacingFactor;
+        }
+    }
+
+    public int Winner
+    {
+        get;
+
+        private set;
+    }
+
+    public Minimax Minimax
+    {
+        get
+        {
+            return _minimax;
+        }
+    }
+
+    public Move.Types CurrentMoveType
+    {
+        get;
+        private set;
+    }
+
+    public int MoveCount
+    {
+        get;
+        private set;
+    }
+
+    public int CurrentPlayer
+    {
+        get;
+        private set;
+    }
+
+    // Methods
     void Awake()
     {
         _instance = this;
@@ -59,10 +136,15 @@ public class GameBoard : MonoBehaviour
 
     void Start()
     {
-        Moves = new Stack<Move>();
+        _minimax = GetComponent<Minimax>();
+        _aStar = GetComponent<AStar>();
+
+        _moves = new Stack<Move>();
+        _edges = new List<Edge>();
+        _walls = new List<Wall>();
 
         _referenceWall = GetNewWall();
-        Walls.Remove(_referenceWall);
+        _walls.Remove(_referenceWall);
         _referenceWall.Free = false;
         _referenceWall.name = "Reference Wall";
         _referenceWall.Tile = null;
@@ -73,46 +155,49 @@ public class GameBoard : MonoBehaviour
         _referenceFocused = Instantiate(FocusPrefab).transform;
         _referenceFocused.SetParent(transform);
         _referenceFocused.name = "Reference Focus Tile";
-        _referenceFocused.localScale = new Vector3(0.75f * TileSize, _referenceFocused.localScale.y, 0.75f * TileSize);
+        _referenceFocused.localScale = new Vector3(0.75f * _tileSize, _referenceFocused.localScale.y, 0.75f * _tileSize);
         _referenceFocused.transform.position = new Vector3(0, TilePrefab.transform.localScale.y * 0.5f, 0);
 
         StartCoroutine(UpdateEdges());
 
         Ongoing = false;
-        //Restart();
     }
 
     void Update()
     {
         if (Ongoing)
         {
-            _waitForNextPlay += Time.deltaTime;
+            
 
-            IsGameOver = CheckGameOver();
-            if (!IsGameOver && Players[CurrentPlayer].IsCpu && _waitForNextPlay >= WaitingTimeBeforeCPU)
+            IsGameOver = GameOver();
+            if (!IsGameOver && _players[CurrentPlayer].IsCpu)
             {
-                if (!Minimax.IsRunning())
+                _waitForNextPlay += Time.deltaTime;
+                if (_waitForNextPlay >= _cpuTurnWait)
                 {
-                    if (Minimax.IsFinished())
+                    if (!_minimax.IsRunning())
                     {
-                        //Debug.Log("Detected algorithm finished!");
-                        Move best = Minimax.GetResult();
-                        if (!PlayMove(best))
+                        if (_minimax.IsFinished())
                         {
-//                            Debug.Log("Could not play best move: " + best);
-//                            Pause();
+                            //Debug.Log("Detected algorithm finished!");
+                            Move best = _minimax.GetResult();
+                            if (!PlayMove(best))
+                            {
+                                //                            Debug.Log("Could not play best move: " + best);
+                                //                            Pause();
+                            }
+                            //                        else
+                            //                        {
+                            //                            Debug.Log("Played best move: " + best);
+                            //                            Debug.Log("Value for this move: " + Minimax.CalculateHeuristicValue(GetPreviousPlayer(CurrentPlayer)));
+                            //                        }
                         }
-//                        else
-//                        {
-//                            Debug.Log("Played best move: " + best);
-//                            Debug.Log("Value for this move: " + Minimax.CalculateHeuristicValue(GetPreviousPlayer(CurrentPlayer)));
-//                        }
-                    }
-                    else
-                    {
-                        //Debug.Log("Trying to get algorithm to run...");
-                        //StartCoroutine(Minimax.RunAlgorithmLinear(this));
-                        Minimax.RunAlgorithm(this);
+                        else
+                        {
+                            //Debug.Log("Trying to get algorithm to run...");
+                            //StartCoroutine(Minimax.RunAlgorithmLinear(this));
+                            _minimax.RunAlgorithm(this);
+                        }
                     }
                 }
             }
@@ -127,7 +212,7 @@ public class GameBoard : MonoBehaviour
     {
         while (true)
         {
-            foreach (var edge in Edges)
+            foreach (var edge in _edges)
             {
                 edge.gameObject.SetActive(ShowEdges);
             }
@@ -141,10 +226,10 @@ public class GameBoard : MonoBehaviour
         if (Input.GetKeyUp(KeyCode.Escape))
             QuitApplication();
 
-        if (!Ongoing || CheckGameOver())
+        if (!Ongoing || GameOver())
             return;
 
-        if (Players[CurrentPlayer].IsCpu)
+        if (_players[CurrentPlayer].IsCpu)
             return;
 
         if (Input.GetKeyUp(KeyCode.Tab))
@@ -177,16 +262,16 @@ public class GameBoard : MonoBehaviour
 
     void UpdateVisualElements()
     {
-        _referenceFocused.gameObject.SetActive(FocusedTile != null && !Players[CurrentPlayer].IsCpu);
-        if (FocusedTile != null)
+        _referenceFocused.gameObject.SetActive(_focusedTile != null && !_players[CurrentPlayer].IsCpu);
+        if (_focusedTile != null)
         {
-            var newPosition = new Vector3(FocusedTile.transform.position.x, _referenceFocused.position.y, FocusedTile.transform.position.z);
+            var newPosition = new Vector3(_focusedTile.transform.position.x, _referenceFocused.position.y, _focusedTile.transform.position.z);
             _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, newPosition, Time.deltaTime * 8f);
-            _referenceWall.Invalid = !CanPlaceWall(FocusedTile, _referenceWall.Horizontal);
-            _referenceWall.Tile = (MoveType == Move.Types.PlaceWall) ? FocusedTile : null;
+            _referenceWall.Invalid = !CanPlaceWall(_focusedTile, _referenceWall.Horizontal);
+            _referenceWall.Tile = (CurrentMoveType == Move.Types.PlaceWall) ? _focusedTile : null;
         }
 
-        var visualBoardScale = Size * (TileSize + TileSpacingFactor) + TileSize * VisualBoardScaleMult;
+        var visualBoardScale = _size * (_tileSize + _tileSpacingFactor) + _tileSize * _boardScaleMultiplier;
         VisualBoard.localScale = new Vector3(visualBoardScale, visualBoardScale, 1);
     }
 
@@ -209,11 +294,11 @@ public class GameBoard : MonoBehaviour
 
     void SetPropertiesForAllTiles(bool selected, bool highlighted, bool objective, bool resetOccupied)
     {
-        for (var row = 0; row < Size; row++)
+        for (var row = 0; row < _size; row++)
         {
-            for (var col = 0; col < Size; col++)
+            for (var col = 0; col < _size; col++)
             {
-                var tile = Tiles[row, col];
+                var tile = _tiles[row, col];
                 tile.Selected = selected;
                 tile.Highlighted = highlighted;
                 tile.Objective = objective;
@@ -225,39 +310,39 @@ public class GameBoard : MonoBehaviour
 
     void CreateTiles()
     {
-        Tiles = new Tile[Size, Size];
+        _tiles = new Tile[_size, _size];
 
-        var tileSpacing = (TileSize + TileSpacingFactor * TileSize);
-        var offset = -(tileSpacing * 0.5f * (Size - 1));
+        var tileSpacing = (_tileSize + _tileSpacingFactor * _tileSize);
+        var offset = -(tileSpacing * 0.5f * (_size - 1));
 
-        for (var row = 0; row < Size; row++)
+        for (var row = 0; row < _size; row++)
         {
-            for (var col = 0; col < Size; col++)
+            for (var col = 0; col < _size; col++)
             {
                 var newTile = Instantiate(TilePrefab).GetComponent<Tile>();
                 newTile.name = "Tile_" + row + "_" + col;
                 newTile.transform.SetParent(transform.FindChild(Names.Tiles));
-                newTile.transform.localScale = new Vector3(TileSize, newTile.Height, TileSize);
+                newTile.transform.localScale = new Vector3(_tileSize, newTile.Height, _tileSize);
                 newTile.transform.position = new Vector3(col * tileSpacing + offset, 0.5f * newTile.transform.localScale.y, row * tileSpacing + offset);
                 newTile.Row = row;
                 newTile.Col = col;
 
-                Tiles[row, col] = newTile;
+                _tiles[row, col] = newTile;
             }
         }
     }
 
     void CreateEdges()
     {
-        for (int row = 0; row < Size; row++)
+        for (int row = 0; row < _size; row++)
         {
-            for (int col = 0; col < Size; col++)
+            for (int col = 0; col < _size; col++)
             {
-                var tile = Tiles[row, col];
+                var tile = _tiles[row, col];
                 if (col < Border)
-                    CreateEdge(tile, Tiles[row, col + 1]);
+                    CreateEdge(tile, _tiles[row, col + 1]);
                 if (row < Border)
-                    CreateEdge(tile, Tiles[row + 1, col]);
+                    CreateEdge(tile, _tiles[row + 1, col]);
             }
         }
     }
@@ -266,19 +351,19 @@ public class GameBoard : MonoBehaviour
     {
         SetPropertiesForAllTiles(false, false, false, true);
 
-        var col = Size / 2;
-        for (var i = 0; i < Players.Count; i++)
+        var col = _size / 2;
+        for (var i = 0; i < _players.Count; i++)
         {
-            var row = Mathf.Max(i * Size - 1, 0);
-            Players[i].Pawn.Tile = Tiles[row, col];
-            Players[i].Pawn.Tile.Occupied = true;
-            Players[i].ObjectiveRow = Mathf.Max(Size - i * Size - 1, 0);
+            var row = Mathf.Max(i * _size - 1, 0);
+            _players[i].Pawn.Tile = _tiles[row, col];
+            _players[i].Pawn.Tile.Occupied = true;
+            _players[i].ObjectiveRow = Mathf.Max(_size - i * _size - 1, 0);
         }
     }
 
     void CreateEdge(Tile src, Tile dest)
     {
-        foreach (Edge edge in Edges)
+        foreach (Edge edge in _edges)
         {
             if (edge.Connects(src, dest))
                 return;
@@ -297,7 +382,7 @@ public class GameBoard : MonoBehaviour
 
     void RemoveEdge(Tile src, Tile dest)
     {
-        foreach (var edge in Edges)
+        foreach (var edge in _edges)
         {
             if (edge.Connects(src, dest))
             {
@@ -311,14 +396,14 @@ public class GameBoard : MonoBehaviour
     {
         edge.A.Edges.Remove(edge);
         edge.B.Edges.Remove(edge);
-        Edges.Remove(edge);
+        _edges.Remove(edge);
         Destroy(edge.gameObject);
     }
 
     Edge GetNewEdge()
     {
         // If an available edge already exists in the pool
-        foreach (var edge in Edges)
+        foreach (var edge in _edges)
         {
             if (edge.Free)
                 return edge;           
@@ -328,7 +413,7 @@ public class GameBoard : MonoBehaviour
         var newEdge = GameObject.Instantiate(EdgePrefab).GetComponent<Edge>();
         newEdge.transform.SetParent(EdgesTransform);
         newEdge.name = Names.Edge_;
-        Edges.Add(newEdge);
+        _edges.Add(newEdge);
 
         return newEdge;
     }
@@ -336,7 +421,7 @@ public class GameBoard : MonoBehaviour
     Wall GetNewWall()
     {
         // If an available wall already exists in the pool
-        foreach (var wall in Walls)
+        foreach (var wall in _walls)
         {
             if (wall.Free)
                 return wall;           
@@ -345,16 +430,16 @@ public class GameBoard : MonoBehaviour
         // Else create a new and add to the pool
         var newWall = GameObject.Instantiate(WallPrefab).GetComponent<Wall>();
         newWall.transform.SetParent(WallsTransform);
-        newWall.transform.localScale = new Vector3(1.9f * TileSize + TileSpacingFactor * TileSize, 1, Mathf.Max(TileSpacingFactor * TileSize, MinWallWidth));
+        newWall.transform.localScale = new Vector3(1.9f * _tileSize + _tileSpacingFactor * _tileSize, 1, Mathf.Max(_tileSpacingFactor * _tileSize, _minWallWidth));
         newWall.name = Names.Wall_;
-        Walls.Add(newWall);
+        _walls.Add(newWall);
 
         return newWall;        
     }
 
     void SetConnectionActive(Tile src, Tile dest, bool active)
     {
-        foreach (var edge in Edges)
+        foreach (var edge in _edges)
         {
             if (edge.Connects(src, dest))
             {
@@ -366,15 +451,15 @@ public class GameBoard : MonoBehaviour
 
     bool IsBoardPosition(int row, int col)
     {
-        return (row >= 0) && (row < Size) &&
-        (col >= 0) && (col < Size);
+        return (row >= 0) && (row < _size) &&
+        (col >= 0) && (col < _size);
     }
 
     bool RemoveWall(Tile tile, bool horizontal)
     {
-        var tileEast = Tiles[tile.Row, tile.Col + 1];
-        var tileSouth = Tiles[tile.Row - 1, tile.Col];
-        var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
+        var tileEast = _tiles[tile.Row, tile.Col + 1];
+        var tileSouth = _tiles[tile.Row - 1, tile.Col];
+        var tileSoutheast = _tiles[tile.Row - 1, tile.Col + 1];
 
         if (horizontal)
         {
@@ -389,13 +474,13 @@ public class GameBoard : MonoBehaviour
             SetConnectionActive(tileSouth, tileSoutheast, true);
         }
 
-        for (var i = 0; i < Walls.Count; i++)
+        for (var i = 0; i < _walls.Count; i++)
         {
-            var wall = Walls[i];
+            var wall = _walls[i];
             if (wall.Tile == tile)
             {
                 Destroy(wall.gameObject);
-                Walls.Remove(wall);
+                _walls.Remove(wall);
                 return true;
             }
         }
@@ -405,30 +490,30 @@ public class GameBoard : MonoBehaviour
 
     void RemoveAllWalls()
     {
-        for (var i = Walls.Count - 1; i >= 0; i--)
+        for (var i = _walls.Count - 1; i >= 0; i--)
         {
-            var wall = Walls[i];
+            var wall = _walls[i];
             RemoveWall(wall.Tile, wall.Horizontal);
         }
     }
 
     void MarkObjectiveRow(int player)
     {
-        var objectiveRow = Players[player].ObjectiveRow;
+        var objectiveRow = _players[player].ObjectiveRow;
 
-        for (var col = 0; col < Size; col++)
+        for (var col = 0; col < _size; col++)
         {
-            Tiles[objectiveRow, col].Objective = true;
+            _tiles[objectiveRow, col].Objective = true;
         }
     }
 
     void CreateTemporaryEdgesForOtherPlayers(int currentPlayer)
     {
-        for (var i = 0; i < Players.Count; i++)
+        for (var i = 0; i < _players.Count; i++)
         {
             if (i != currentPlayer)
             {
-                CreateTemporaryEdgesForOtherPlayers(Players[i].Pawn.Tile);
+                CreateTemporaryEdgesForOtherPlayers(_players[i].Pawn.Tile);
             }
         }
     }
@@ -467,9 +552,9 @@ public class GameBoard : MonoBehaviour
 
     void RemoveTemporaryEdges()
     {
-        for (var i = 0; i < Edges.Count; i++)
+        for (var i = 0; i < _edges.Count; i++)
         {
-            var edge = Edges[i];
+            var edge = _edges[i];
             if (Tile.Distance(edge.A, edge.B) > 1)
             {
                 RemoveEdge(edge);
@@ -486,12 +571,12 @@ public class GameBoard : MonoBehaviour
         if (!IsBoardPosition(tile.Row - 1, tile.Col + 1))
             return false;
 
-        if (Players[CurrentPlayer].Walls <= 0)
+        if (_players[CurrentPlayer].Walls <= 0)
             return false;
         
         if (horizontal)
         {
-            foreach (var wall in Walls)
+            foreach (var wall in _walls)
             {
                 if (wall.Tile == tile)
                     return false;
@@ -503,7 +588,7 @@ public class GameBoard : MonoBehaviour
         }
         else
         {
-            foreach (var wall in Walls)
+            foreach (var wall in _walls)
             {
                 if (wall.Tile == tile)
                     return false;
@@ -535,16 +620,16 @@ public class GameBoard : MonoBehaviour
         CurrentPlayer = StartingPlayer - 1;
         NextTurn();
 
-        foreach (var player in Players)
+        foreach (var player in _players)
         {
-            player.Walls = MaxWallsPerPlayer;
+            player.Walls = _numWallsPerPlayer;
         }
             
         RemoveAllWalls();
 
-        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
+        _focusedTile = _players[CurrentPlayer].Pawn.Tile;
 
-        Minimax.SetWeights();
+        _minimax.SetWeights();
 
         MoveCount = 0;
         IsGameOver = false;
@@ -558,9 +643,9 @@ public class GameBoard : MonoBehaviour
         var rotatedVerticalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? verticalInput :
             Camera.EulerHorizontal < 135 ? -horizontalInput : Camera.EulerHorizontal < 225 ? -verticalInput : horizontalInput;
 
-        if (IsBoardPosition(FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput))
+        if (IsBoardPosition(_focusedTile.Row + rotatedVerticalInput, _focusedTile.Col + rotatedHorizontalInput))
         {
-            FocusedTile = Tiles[FocusedTile.Row + rotatedVerticalInput, FocusedTile.Col + rotatedHorizontalInput]; 
+            _focusedTile = _tiles[_focusedTile.Row + rotatedVerticalInput, _focusedTile.Col + rotatedHorizontalInput]; 
         } 
     }
 
@@ -571,7 +656,7 @@ public class GameBoard : MonoBehaviour
 
     public void ChangeToNextMode()
     {
-        MoveType = Move.GetNextType(MoveType);
+        CurrentMoveType = Move.GetNextType(CurrentMoveType);
     }
 
     public void QuitApplication()
@@ -582,7 +667,7 @@ public class GameBoard : MonoBehaviour
     public Queue<Move> GetCurrentPossibleMoves()
     {
         var moves = new Queue<Move>();
-        var currentPlayerPawn = Players[CurrentPlayer].Pawn;
+        var currentPlayerPawn = _players[CurrentPlayer].Pawn;
 
         // Move pawn
         foreach (var edge in currentPlayerPawn.Tile.Edges)
@@ -592,15 +677,15 @@ public class GameBoard : MonoBehaviour
                 moves.Enqueue(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
         }
 
-        var hasWalls = (Players[CurrentPlayer].Walls > 0);
+        var hasWalls = (_players[CurrentPlayer].Walls > 0);
         if (hasWalls)
         {
             // Place horizontal walls
-            for (var row = 0; row < Size; row++)
+            for (var row = 0; row < _size; row++)
             {
-                for (var col = 0; col < Size; col++)
+                for (var col = 0; col < _size; col++)
                 {
-                    var tile = Tiles[row, col];
+                    var tile = _tiles[row, col];
 
                     if (CanPlaceWall(tile, true))
                         moves.Enqueue(new PlaceWall(tile, true));
@@ -608,11 +693,11 @@ public class GameBoard : MonoBehaviour
             }
 
             // Place vertical walls
-            for (var row = 0; row < Size; row++)
+            for (var row = 0; row < _size; row++)
             {
-                for (var col = 0; col < Size; col++)
+                for (var col = 0; col < _size; col++)
                 {
-                    var tile = Tiles[row, col];
+                    var tile = _tiles[row, col];
 
                     if (CanPlaceWall(tile, false))
                         moves.Enqueue(new PlaceWall(tile, false));
@@ -626,7 +711,7 @@ public class GameBoard : MonoBehaviour
     public int GetNextPlayer(int player)
     {
         var next = player + 1;
-        next %= Players.Count;
+        next %= _players.Count;
         return next;
     }
 
@@ -634,20 +719,20 @@ public class GameBoard : MonoBehaviour
     {
         var previous = player - 1;
         if (previous < 0)
-            previous = Players.Count + previous;
+            previous = _players.Count + previous;
         return previous;
     }
 
     public void OnAction()
     {
-        switch (MoveType)
+        switch (CurrentMoveType)
         {
             case Move.Types.MovePawn:
-                PlayMove(new MovePawn(Players[CurrentPlayer].Pawn, Players[CurrentPlayer].Pawn.Tile, FocusedTile));
+                PlayMove(new MovePawn(_players[CurrentPlayer].Pawn, _players[CurrentPlayer].Pawn.Tile, _focusedTile));
                 break;
 
             case Move.Types.PlaceWall:
-                PlayMove(new PlaceWall(FocusedTile, _referenceWall.Horizontal));
+                PlayMove(new PlaceWall(_focusedTile, _referenceWall.Horizontal));
                 break;
         }
     }
@@ -674,13 +759,13 @@ public class GameBoard : MonoBehaviour
             if (CanPlaceWall(placeWall.Tile, placeWall.Horizontal))
             {
                 PlaceWall(placeWall.Tile, placeWall.Horizontal);
-                Players[CurrentPlayer].Walls--;          
+                _players[CurrentPlayer].Walls--;          
             }
             else
                 return false;
         }
 
-        Moves.Push(move);
+        _moves.Push(move);
         NextTurn();
         MoveCount++;       
 
@@ -695,13 +780,13 @@ public class GameBoard : MonoBehaviour
 
     public bool UndoMove()
     {
-        if (Moves == null || Moves.Count == 0)
+        if (_moves == null || _moves.Count == 0)
         {
             Debug.Log("No moves accounted for...");
             return false;
         }
 
-        var lastMove = Moves.Peek();
+        var lastMove = _moves.Peek();
 
         if (lastMove.GetType() == typeof(MovePawn))
         {
@@ -712,10 +797,10 @@ public class GameBoard : MonoBehaviour
         {
             var move = lastMove as PlaceWall;
             RemoveWall(move.Tile, move.Horizontal);
-            Players[GetPreviousPlayer(CurrentPlayer)].Walls++;
+            _players[GetPreviousPlayer(CurrentPlayer)].Walls++;
         }
             
-        Moves.Pop();
+        _moves.Pop();
         PreviousTurn();
         MoveCount--;
 
@@ -724,7 +809,7 @@ public class GameBoard : MonoBehaviour
 
     bool IsBoardValid()
     {
-        return AStar.CalculateDistancesToObjective();
+        return _aStar.CalculateDistancesToObjective();
     }
 
     public void MovePawnTo(Pawn pawn, Tile dest)
@@ -737,9 +822,9 @@ public class GameBoard : MonoBehaviour
 
     public void PlaceWall(Tile tile, bool horizontal)
     {
-        var tileEast = Tiles[tile.Row, tile.Col + 1];
-        var tileSouth = Tiles[tile.Row - 1, tile.Col];
-        var tileSoutheast = Tiles[tile.Row - 1, tile.Col + 1];
+        var tileEast = _tiles[tile.Row, tile.Col + 1];
+        var tileSouth = _tiles[tile.Row - 1, tile.Col];
+        var tileSoutheast = _tiles[tile.Row - 1, tile.Col + 1];
 
         if (horizontal)
         {
@@ -780,21 +865,23 @@ public class GameBoard : MonoBehaviour
 
         CurrentPlayer = forward ? GetNextPlayer(CurrentPlayer) : GetPreviousPlayer(CurrentPlayer);
 
-        CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
-        MarkObjectiveRow(CurrentPlayer);
-
-        SelectTile(Players[CurrentPlayer].Pawn.Tile);
-        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
-        MoveType = Move.Types.MovePawn;
+        if (!GameOver())
+        {
+            CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
+            MarkObjectiveRow(CurrentPlayer);
+            SelectTile(_players[CurrentPlayer].Pawn.Tile);
+            _focusedTile = _players[CurrentPlayer].Pawn.Tile;
+            CurrentMoveType = Move.Types.MovePawn; 
+        }
 
         _waitForNextPlay = 0;
     }
 
-    public bool CheckGameOver()
+    public bool GameOver()
     {
-        for (var i = 0; i < Players.Count; i++)
+        for (var i = 0; i < _players.Count; i++)
         {
-            var player = Players[i];
+            var player = _players[i];
             if (player.Pawn.Tile.Row == player.ObjectiveRow)
             {
                 Winner = i;
@@ -804,9 +891,19 @@ public class GameBoard : MonoBehaviour
 
         Winner = -1;
 
-        if (MoveCount >= MaxMoves)
+        if (MoveCount >= _maxMovesPerGame)
             return true;
 
         return false;
+    }
+
+    public Player GetCurrentPlayer()
+    {
+        return _players[CurrentPlayer];
+    }
+
+    public Player GetPlayer(int index)
+    {
+        return _players[index];
     }
 }

@@ -45,8 +45,8 @@ public class Debugger : MonoBehaviour
                 _board.Minimax.Depth = MinimaxDepth;
                 _startingPlayer = _gameCount < NumGamesPerTest / 2 ? 0 : 1;
                 _board.StartingPlayer = _startingPlayer;
-                _board.Players[0].IsCpu = true;
-                _board.Players[1].IsCpu = true;
+                _board.GetPlayer(0).IsCpu = true;
+                _board.GetPlayer(1).IsCpu = true;
                 _board.NewGame();
             }
         }

@@ -24,8 +24,8 @@ public class Wall : MonoBehaviour
     void Start()
     {
         var gameBoard = GameBoard.Instance;
-        _offset = new Vector3(0.5f * (gameBoard.TileSize + gameBoard.TileSpacingFactor * gameBoard.TileSize), 0.5f,
-            -0.5f * (gameBoard.TileSize + gameBoard.TileSpacingFactor * gameBoard.TileSize));
+        _offset = new Vector3(0.5f * (gameBoard.TileSize + gameBoard.TileSpacing * gameBoard.TileSize), 0.5f,
+            -0.5f * (gameBoard.TileSize + gameBoard.TileSpacing * gameBoard.TileSize));
 
         _material = GetComponent<MeshRenderer>().material;
     }
