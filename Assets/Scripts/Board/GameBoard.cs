@@ -39,6 +39,10 @@ public class GameBoard : MonoBehaviour
     [HideInInspector]
     public List<Player> Players;
     public Tile[,] Tiles;
+    [Range(0, 2)]
+    public int WaitingTimeBeforeCPU;
+    [Range(1, 10)]
+    public int VisualBoardScaleMult;
 
     public int Border { get { return Size - 1; } }
 
@@ -66,7 +70,10 @@ public class GameBoard : MonoBehaviour
         CreateEdges();
 
         _referenceFocused = Instantiate(FocusPrefab).transform;
-        _referenceFocused.localScale = new Vector3(0.75f * TileSize, 0.25f, 0.75f * TileSize);
+        _referenceFocused.SetParent(transform);
+        _referenceFocused.name = "Reference Focus Tile";
+        _referenceFocused.localScale = new Vector3(0.75f * TileSize, _referenceFocused.localScale.y, 0.75f * TileSize);
+        _referenceFocused.transform.position = new Vector3(0, TilePrefab.transform.localScale.y * 0.5f, 0);
 
         StartCoroutine(UpdateEdges());
 
@@ -78,8 +85,10 @@ public class GameBoard : MonoBehaviour
     {
         if (Ongoing)
         {
+            _waitForNextPlay += Time.deltaTime;
+
             IsGameOver = CheckGameOver();
-            if (!IsGameOver && Players[CurrentPlayer].IsCpu)
+            if (!IsGameOver && Players[CurrentPlayer].IsCpu && _waitForNextPlay >= WaitingTimeBeforeCPU)
             {
                 if (!Minimax.IsRunning())
                 {
@@ -167,15 +176,17 @@ public class GameBoard : MonoBehaviour
 
     void UpdateVisualElements()
     {
-        VisualBoard.localScale = new Vector3(Size * (TileSize + TileSpacingFactor) + TileSize, Size * (TileSize + TileSpacingFactor) + TileSize, 1);
-
         _referenceFocused.gameObject.SetActive(FocusedTile != null && !Players[CurrentPlayer].IsCpu);
         if (FocusedTile != null)
         {
-            _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, FocusedTile.transform.position + new Vector3(0, 0.5f, 0), Time.deltaTime * 8f);
+            var newPosition = new Vector3(FocusedTile.transform.position.x, _referenceFocused.position.y, FocusedTile.transform.position.z);
+            _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, newPosition, Time.deltaTime * 8f);
             _referenceWall.Invalid = !CanPlaceWall(FocusedTile, _referenceWall.Horizontal);
             _referenceWall.Tile = (MoveType == Move.Types.PlaceWall) ? FocusedTile : null;
         }
+
+        var visualBoardScale = Size * (TileSize + TileSpacingFactor) + TileSize * VisualBoardScaleMult;
+        VisualBoard.localScale = new Vector3(visualBoardScale, visualBoardScale, 1);
     }
 
     void SelectTile(Tile tile)
@@ -738,33 +749,30 @@ public class GameBoard : MonoBehaviour
 
     public void NextTurn()
     {
-        _referenceWall.Tile = null;
-        RemoveTemporaryEdges();
-        SetPropertiesForAllTiles(false, false, false, false);
-
-        CurrentPlayer = GetNextPlayer(CurrentPlayer);
-        CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
-        MarkObjectiveRow(CurrentPlayer);
-
-        SelectTile(Players[CurrentPlayer].Pawn.Tile);
-        FocusedTile = Players[CurrentPlayer].Pawn.Tile;
-        MoveType = Move.Types.MovePawn;
+        ChangeTurn(true);
     }
 
     public void PreviousTurn()
+    {
+        ChangeTurn(false);
+    }
+
+    void ChangeTurn(bool forward)
     {
         _referenceWall.Tile = null;
         RemoveTemporaryEdges();
         SetPropertiesForAllTiles(false, false, false, false);
 
-        CurrentPlayer = GetPreviousPlayer(CurrentPlayer);
+        CurrentPlayer = forward ? GetNextPlayer(CurrentPlayer) : GetPreviousPlayer(CurrentPlayer);
+
         CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
+        MarkObjectiveRow(CurrentPlayer);
 
         SelectTile(Players[CurrentPlayer].Pawn.Tile);
         FocusedTile = Players[CurrentPlayer].Pawn.Tile;
         MoveType = Move.Types.MovePawn;
 
-        MarkObjectiveRow(CurrentPlayer);
+        _waitForNextPlay = 0;
     }
 
     public bool CheckGameOver()

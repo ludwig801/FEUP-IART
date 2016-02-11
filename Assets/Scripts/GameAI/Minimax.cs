@@ -20,9 +20,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
     public int Depth;
     public AStar AStar;
     public float HeuristicValue;
-    [Range(0, 1)]
-    public float YieldTime;
-    [Range(5, 20)]
+    [Range(5, 15)]
     public int MaxAlgorithmTime;
     public float[,] HeuristicFunctionsWeights;
 
@@ -63,6 +61,8 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
 
         _timer = new System.Diagnostics.Stopwatch();
         _timer.Start();
+
+        MaxAlgorithmTime = Depth * 5;
 
         MinimaxAlphaBeta(_gameBoard, 0, float.MinValue, float.MaxValue, true, _gameBoard.CurrentPlayer);
 

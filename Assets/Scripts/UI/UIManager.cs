@@ -39,10 +39,10 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
-        ControlsPanel.gameObject.SetActive(!DebugToggle.isOn);
+        //ControlsPanel.gameObject.SetActive(!DebugToggle.isOn);
         //GamePanel.gameObject.SetActive(!DebugToggle.isOn);
         //InfoPanel.gameObject.SetActive(!DebugToggle.isOn);
-        DebugPanel.gameObject.SetActive(DebugToggle.isOn);
+        //DebugPanel.gameObject.SetActive(DebugToggle.isOn);
 
         PauseBtn.gameObject.SetActive(GameBoard.Ongoing);
         ResumeBtn.gameObject.SetActive(!GameBoard.Ongoing);
