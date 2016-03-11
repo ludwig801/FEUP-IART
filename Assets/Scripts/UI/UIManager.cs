@@ -32,6 +32,7 @@ public class UIManager : MonoBehaviour
         DifficultySlider.minValue = 1;
         DifficultySlider.maxValue = Difficulties.Length;
         DifficultySlider.value = Mathf.Clamp(DifficultySlider.value, DifficultySlider.minValue, DifficultySlider.maxValue);
+        DifficultySlider.value = GameBoard.Minimax.Depth;
 
         HeuristicsPlayer = DebugPlayer0.GetComponentsInChildren<Slider>();
         HeuristicsOpponent = DebugPlayer1.GetComponentsInChildren<Slider>();
@@ -51,7 +52,7 @@ public class UIManager : MonoBehaviour
         Player1IsCPU.isOn = GameBoard.GetPlayer(0).IsCpu;
         Player2IsCPU.isOn = GameBoard.GetPlayer(1).IsCpu;
         DifficultySlider.value = GameBoard.Minimax.Depth;
-        DifficultyLabel.text = "Level: " + Difficulties[GameBoard.Minimax.Depth - 1];
+        DifficultyLabel.text = string.Concat("Level [", Difficulties[GameBoard.Minimax.Depth - 1], "]");
         Player1Starts.isOn = (GameBoard.StartingPlayer == 0);
 
         if (GameBoard.Ongoing)
