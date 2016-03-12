@@ -190,6 +190,8 @@ public class GameBoard : MonoBehaviour
                     } 
                 }
             }
+
+            Ongoing = Ongoing && !IsGameOver;
         }
 
         HandleKeysInput();
