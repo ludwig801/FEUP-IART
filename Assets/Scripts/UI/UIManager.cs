@@ -110,7 +110,7 @@ public class UIManager : MonoBehaviour
                 }
                 else
                 {
-                    WinnerInfo.text = string.Concat("Player ", GameBoard.Winner + 1, ", you are the winner!");
+                    WinnerInfo.text = string.Concat("Player ", GameBoard.Winner + 1, " won the game!");
                     PlayerColor.color = GameBoard.GetPlayer(GameBoard.Winner).Color;
                     WinnerBackground.color = PlayerColor.color;
                     InfoText.text = string.Concat("Game Over (Winner is player ", GameBoard.Winner + 1, ")");
