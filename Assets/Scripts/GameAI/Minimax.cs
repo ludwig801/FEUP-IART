@@ -68,7 +68,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         _timer.Start();
 
         MaxAlgorithmTime = Depth * 5;
-        MinimaxAlphaBeta(_gameBoard, 0, float.MinValue, float.MaxValue, true, _gameBoard.CurrentPlayer);
+        MinimaxAlphaBeta(_gameBoard, 0, float.MinValue, float.MaxValue, true, _gameBoard.CurrentPlayerIndex);
 
         _running = false;
         _finished = true;
@@ -85,7 +85,7 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         if(_timer.ElapsedMilliseconds > MaxAlgorithmTimeInMilliseconds)
             return CalculateHeuristicValue(player);
 
-        var moves = board.GetCurrentPossibleMoves();
+        var moves = board.GetCurrenPlayerMoves();
         var bestValue = isMaximizer ? float.MinValue : float.MaxValue;
         foreach (var move in moves)
         {

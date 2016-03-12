@@ -74,9 +74,9 @@ public class UIManager : MonoBehaviour
             }
             else
             {
-                var currentPlayer = GameBoard.GetCurrentPlayer();
+                var currentPlayer = GameBoard.CurrentPlayer;
                 PlayerColor.color = currentPlayer.Color;
-                Player.text = "Player " + (GameBoard.CurrentPlayer + 1) + (currentPlayer.IsCpu ? " [CPU]" : "");
+                Player.text = "Player " + (GameBoard.CurrentPlayerIndex + 1) + (currentPlayer.IsCpu ? " [CPU]" : "");
                 if (!currentPlayer.IsCpu)
                 {
                     switch (GameBoard.CurrentMoveType)

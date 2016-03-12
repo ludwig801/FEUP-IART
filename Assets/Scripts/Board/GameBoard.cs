@@ -48,6 +48,7 @@ public class GameBoard : MonoBehaviour
     Tile[,] _tiles;
     Tile _focusedTile;
     float _waitForNextPlay;
+    public Move.Types CurrentMoveType;
 
     // Public variables
     [Range(-1, 1)]
@@ -110,29 +111,31 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    public Move.Types CurrentMoveType
-    {
-        get;
-        private set;
-    }
-
     public int MoveCount
     {
         get;
         private set;
     }
 
-    public int CurrentPlayer
+    public int CurrentPlayerIndex
     {
         get;
         private set;
+    }
+
+    public Player CurrentPlayer
+    {
+        get
+        {
+            return _players[CurrentPlayerIndex];
+        }
     }
 
     public bool IsCurrentPlayerCPU
     {
         get
         {
-            return _players[CurrentPlayer].IsCpu;
+            return _players[CurrentPlayerIndex].IsCpu;
         }
     }
 
@@ -156,6 +159,7 @@ public class GameBoard : MonoBehaviour
         _referenceWall.Free = false;
         _referenceWall.name = "Reference Wall";
         _referenceWall.Tile = null;
+        _referenceWall.gameObject.SetActive(false);
 
         CreateTiles();
         CreateEdges();
@@ -237,16 +241,16 @@ public class GameBoard : MonoBehaviour
             ChangeWallOrientation();
 
         if (Input.GetKeyDown(KeyCode.A))
-            FocusTile(-1, 0);
+            ChangeFocusedTile(-1, 0);
 
         if (Input.GetKeyDown(KeyCode.D))
-            FocusTile(+1, 0);
+            ChangeFocusedTile(+1, 0);
 
         if (Input.GetKeyDown(KeyCode.S))
-            FocusTile(0, -1);
+            ChangeFocusedTile(0, -1);
 
         if (Input.GetKeyDown(KeyCode.W))
-            FocusTile(0, +1);
+            ChangeFocusedTile(0, +1);
     }
 
     void UpdateVisualElements()
@@ -256,6 +260,7 @@ public class GameBoard : MonoBehaviour
         {
             var newPosition = new Vector3(_focusedTile.transform.position.x, _referenceFocused.position.y, _focusedTile.transform.position.z);
             _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, newPosition, Time.deltaTime * 8f);
+            _referenceWall.gameObject.SetActive(CurrentMoveType == Move.Types.PlaceWall);
             _referenceWall.Invalid = !CanPlaceWall(_focusedTile, _referenceWall.Horizontal);
             _referenceWall.Tile = (CurrentMoveType == Move.Types.PlaceWall) ? _focusedTile : null;
         }
@@ -560,7 +565,7 @@ public class GameBoard : MonoBehaviour
         if (!IsBoardPosition(tile.Row - 1, tile.Col + 1))
             return false;
 
-        if (_players[CurrentPlayer].Walls <= 0)
+        if (_players[CurrentPlayerIndex].Walls <= 0)
             return false;
         
         if (horizontal)
@@ -606,7 +611,7 @@ public class GameBoard : MonoBehaviour
         Ongoing = true;
         PlacePawns();
 
-        CurrentPlayer = StartingPlayer - 1;
+        CurrentPlayerIndex = StartingPlayer - 1;
         NextTurn();
 
         foreach (var player in _players)
@@ -616,7 +621,7 @@ public class GameBoard : MonoBehaviour
             
         RemoveAllWalls();
 
-        _focusedTile = _players[CurrentPlayer].Pawn.Tile;
+        _focusedTile = _players[CurrentPlayerIndex].Pawn.Tile;
 
         _minimax.SetWeights();
 
@@ -624,7 +629,7 @@ public class GameBoard : MonoBehaviour
         IsGameOver = false;
     }
 
-    public void FocusTile(int horizontalInput, int verticalInput)
+    public void ChangeFocusedTile(int horizontalInput, int verticalInput)
     {
         var rotatedHorizontalInput = (Camera.EulerHorizontal < 45 || Camera.EulerHorizontal >= 315) ? horizontalInput :
             Camera.EulerHorizontal < 135 ? verticalInput : Camera.EulerHorizontal < 225 ? -horizontalInput : -verticalInput;
@@ -653,10 +658,10 @@ public class GameBoard : MonoBehaviour
         Application.Quit();
     }
 
-    public Queue<Move> GetCurrentPossibleMoves()
+    public Queue<Move> GetCurrenPlayerMoves()
     {
         var moves = new Queue<Move>();
-        var currentPlayerPawn = _players[CurrentPlayer].Pawn;
+        var currentPlayerPawn = _players[CurrentPlayerIndex].Pawn;
 
         // Move pawn
         foreach (var edge in currentPlayerPawn.Tile.Edges)
@@ -666,7 +671,7 @@ public class GameBoard : MonoBehaviour
                 moves.Enqueue(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
         }
 
-        var hasWalls = (_players[CurrentPlayer].Walls > 0);
+        var hasWalls = (_players[CurrentPlayerIndex].Walls > 0);
         if (hasWalls)
         {
             // Place horizontal walls
@@ -717,7 +722,7 @@ public class GameBoard : MonoBehaviour
         switch (CurrentMoveType)
         {
             case Move.Types.MovePawn:
-                PlayMove(new MovePawn(_players[CurrentPlayer].Pawn, _players[CurrentPlayer].Pawn.Tile, _focusedTile));
+                PlayMove(new MovePawn(_players[CurrentPlayerIndex].Pawn, _players[CurrentPlayerIndex].Pawn.Tile, _focusedTile));
                 break;
 
             case Move.Types.PlaceWall:
@@ -748,7 +753,7 @@ public class GameBoard : MonoBehaviour
             if (CanPlaceWall(placeWall.Tile, placeWall.Horizontal))
             {
                 PlaceWall(placeWall.Tile, placeWall.Horizontal);
-                _players[CurrentPlayer].Walls--;          
+                _players[CurrentPlayerIndex].Walls--;          
             }
             else
                 return false;
@@ -786,7 +791,7 @@ public class GameBoard : MonoBehaviour
         {
             var move = lastMove as PlaceWall;
             RemoveWall(move.Tile, move.Horizontal);
-            _players[GetPreviousPlayer(CurrentPlayer)].Walls++;
+            _players[GetPreviousPlayer(CurrentPlayerIndex)].Walls++;
         }
             
         _moves.Pop();
@@ -852,14 +857,14 @@ public class GameBoard : MonoBehaviour
         RemoveTemporaryEdges();
         SetPropertiesForAllTiles(false, false, false, false);
 
-        CurrentPlayer = forward ? GetNextPlayer(CurrentPlayer) : GetPreviousPlayer(CurrentPlayer);
+        CurrentPlayerIndex = forward ? GetNextPlayer(CurrentPlayerIndex) : GetPreviousPlayer(CurrentPlayerIndex);
 
         if (!GameOver())
         {
-            CreateTemporaryEdgesForOtherPlayers(CurrentPlayer);
-            MarkObjectiveRow(CurrentPlayer);
-            SelectTile(_players[CurrentPlayer].Pawn.Tile);
-            _focusedTile = _players[CurrentPlayer].Pawn.Tile;
+            CreateTemporaryEdgesForOtherPlayers(CurrentPlayerIndex);
+            MarkObjectiveRow(CurrentPlayerIndex);
+            SelectTile(CurrentPlayer.Pawn.Tile);
+            _focusedTile = CurrentPlayer.Pawn.Tile;
             CurrentMoveType = Move.Types.MovePawn; 
         }
     }
@@ -882,11 +887,6 @@ public class GameBoard : MonoBehaviour
             return true;
 
         return false;
-    }
-
-    public Player GetCurrentPlayer()
-    {
-        return _players[CurrentPlayer];
     }
 
     public Player GetPlayer(int index)
