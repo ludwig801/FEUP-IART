@@ -128,6 +128,14 @@ public class GameBoard : MonoBehaviour
         private set;
     }
 
+    public bool IsCurrentPlayerCPU
+    {
+        get
+        {
+            return _players[CurrentPlayer].IsCpu;
+        }
+    }
+
     // Methods
     void Awake()
     {
@@ -167,38 +175,22 @@ public class GameBoard : MonoBehaviour
     {
         if (Ongoing)
         {
-            
-
             IsGameOver = GameOver();
-            if (!IsGameOver && _players[CurrentPlayer].IsCpu)
+            if (!IsGameOver && IsCurrentPlayerCPU)
             {
                 _waitForNextPlay += Time.deltaTime;
-                if (_waitForNextPlay >= _cpuTurnWait)
+                if (_waitForNextPlay >= _cpuTurnWait && !_minimax.IsRunning())
                 {
-                    if (!_minimax.IsRunning())
+                    _waitForNextPlay = 0;
+
+                    if (_minimax.IsFinished())
                     {
-                        if (_minimax.IsFinished())
-                        {
-                            //Debug.Log("Detected algorithm finished!");
-                            Move best = _minimax.GetResult();
-                            if (!PlayMove(best))
-                            {
-                                //                            Debug.Log("Could not play best move: " + best);
-                                //                            Pause();
-                            }
-                            //                        else
-                            //                        {
-                            //                            Debug.Log("Played best move: " + best);
-                            //                            Debug.Log("Value for this move: " + Minimax.CalculateHeuristicValue(GetPreviousPlayer(CurrentPlayer)));
-                            //                        }
-                        }
-                        else
-                        {
-                            //Debug.Log("Trying to get algorithm to run...");
-                            //StartCoroutine(Minimax.RunAlgorithmLinear(this));
-                            _minimax.RunAlgorithm(this);
-                        }
+                        PlayMove(_minimax.GetResult());
                     }
+                    else
+                    {
+                        _minimax.RunAlgorithm(this);
+                    } 
                 }
             }
         }
@@ -229,17 +221,14 @@ public class GameBoard : MonoBehaviour
         if (!Ongoing || GameOver())
             return;
 
-        if (_players[CurrentPlayer].IsCpu)
+        if (IsCurrentPlayerCPU)
             return;
 
         if (Input.GetKeyUp(KeyCode.Tab))
             ChangeToNextMode();
 
         if (Input.GetKeyUp(KeyCode.Delete) || Input.GetKeyUp(KeyCode.Z))
-        {
-            Debug.Log("Undo");
-            UndoMove();           
-        }
+            UndoMove();
 
         if (Input.GetKeyUp(KeyCode.Space))
             OnAction();
@@ -262,7 +251,7 @@ public class GameBoard : MonoBehaviour
 
     void UpdateVisualElements()
     {
-        _referenceFocused.gameObject.SetActive(_focusedTile != null && !_players[CurrentPlayer].IsCpu);
+        _referenceFocused.gameObject.SetActive(!IsGameOver && _focusedTile != null && !IsCurrentPlayerCPU);
         if (_focusedTile != null)
         {
             var newPosition = new Vector3(_focusedTile.transform.position.x, _referenceFocused.position.y, _focusedTile.transform.position.z);
@@ -873,8 +862,6 @@ public class GameBoard : MonoBehaviour
             _focusedTile = _players[CurrentPlayer].Pawn.Tile;
             CurrentMoveType = Move.Types.MovePawn; 
         }
-
-        _waitForNextPlay = 0;
     }
 
     public bool GameOver()

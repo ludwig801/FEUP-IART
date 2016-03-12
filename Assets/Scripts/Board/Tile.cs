@@ -5,8 +5,8 @@ using System.Collections.Generic;
 public class Tile : MonoBehaviour
 {
     public Color ColorDefault, ColorHighlighted, ColorOccupied, ColorSelected, ColorObjective;
-    [Range(0, 10f)]
-    public float TransitionsSpeed;
+    [Range(0, 10)]
+    public float AnimDuration;
     public List<Edge> Edges;
     public int Row, Col;
     [Range(0.5f, 1.5f)]
@@ -21,16 +21,34 @@ public class Tile : MonoBehaviour
     void Start()
     {
         _material = GetComponent<MeshRenderer>().material;
+
+        StartCoroutine(UpdateColor());
     }
 
-    void Update()
+    IEnumerator UpdateColor()
     {
-        _material.color = Color.Lerp(_material.color,
-            Selected ? ColorSelected :
-            Occupied ? ColorOccupied :
-            Highlighted ? ColorHighlighted :
-            Objective ? ColorObjective :
-            ColorDefault, TransitionsSpeed > 0 ? Time.deltaTime * TransitionsSpeed : 1);
+        var colorDeltaTime = 0f;
+
+        while (true)
+        {
+            var targetColor = Selected ? ColorSelected :
+                Occupied ? ColorOccupied :
+                Highlighted ? ColorHighlighted :
+                Objective ? ColorObjective :
+                ColorDefault;
+
+            if (!IsColorLike(_material.color, targetColor))
+            {
+                colorDeltaTime += Time.deltaTime;
+                _material.color = Color.Lerp(_material.color, targetColor, AnimDuration > 0 ? Mathf.Clamp01(colorDeltaTime / AnimDuration) : 1);
+            }
+            else
+            {
+                colorDeltaTime = 0;
+            }
+
+            yield return null;
+        }
     }
 
     public bool AboveTo(Tile other)
@@ -81,6 +99,27 @@ public class Tile : MonoBehaviour
     public override string ToString()
     {
         return "[" + Row + " " + Col + "]";
+    }
+
+    public bool IsColorLike(Color colorA, Color colorB, float tolerancePerc = 0.01f)
+    {
+        var r = Mathf.Abs(colorA.r - colorB.r);
+        if (r > tolerancePerc)
+            return false;
+
+        var g = Mathf.Abs(colorA.g - colorB.g);
+        if (g > tolerancePerc)
+            return false;
+
+        var b = Mathf.Abs(colorA.b - colorB.b);
+        if (b > tolerancePerc)
+            return false;
+
+        var a = Mathf.Abs(colorA.a - colorB.a);
+        if (a > tolerancePerc)
+            return false;
+
+        return true;
     }
 
     // Class Methods
