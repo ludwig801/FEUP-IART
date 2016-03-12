@@ -24,7 +24,7 @@ public class GameBoard : MonoBehaviour
     [Range(9, 9)]
     [SerializeField] int _size = 9;
     [Range(1, 5)]
-    [SerializeField] int _tileSize;
+    [SerializeField] float _tileSize;
     [Range(0, 1)]
     [SerializeField] float _tileSpacingFactor;
     [Range(0.25f, 1.25f)]
@@ -80,7 +80,7 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    public int TileSize
+    public float TileSize
     {
         get
         {
@@ -255,18 +255,20 @@ public class GameBoard : MonoBehaviour
 
     void UpdateVisualElements()
     {
-        _referenceFocused.gameObject.SetActive(!IsGameOver && _focusedTile != null && !IsCurrentPlayerCPU);
+        //_referenceFocused.gameObject.SetActive(!IsGameOver && _focusedTile != null && !IsCurrentPlayerCPU);
+        _referenceFocused.gameObject.SetActive(false);
         if (_focusedTile != null)
         {
             var newPosition = new Vector3(_focusedTile.transform.position.x, _referenceFocused.position.y, _focusedTile.transform.position.z);
             _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, newPosition, Time.deltaTime * 8f);
             _referenceWall.gameObject.SetActive(CurrentMoveType == Move.Types.PlaceWall);
-            _referenceWall.Invalid = !CanPlaceWall(_focusedTile, _referenceWall.Horizontal);
-            _referenceWall.Tile = (CurrentMoveType == Move.Types.PlaceWall) ? _focusedTile : null;
+            _referenceWall.IsInvalid = !CanPlaceWall(_focusedTile, _referenceWall.Horizontal);
+            _referenceWall.Tile = _focusedTile;
+            _referenceWall.ColorCravings = CurrentPlayer.Color;
         }
 
         var visualBoardScale = _size * (_tileSize + _tileSpacingFactor) + _tileSize * _boardScaleMultiplier;
-        VisualBoard.localScale = new Vector3(visualBoardScale, visualBoardScale, 1);
+        VisualBoard.localScale = new Vector3(visualBoardScale * 10, visualBoardScale * 10, 1);
     }
 
     void SelectTile(Tile tile)
@@ -278,7 +280,7 @@ public class GameBoard : MonoBehaviour
         foreach (var edge in tile.Edges)
         {
             var neighbor = edge.GetNeighborOf(tile);
-            if (neighbor.CanMoveTo(tile))
+            if (neighbor.IsValidMoveTarget(tile))
             {
                 neighbor.Selected = false;
                 neighbor.Highlighted = true;                 
@@ -286,7 +288,7 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    void SetPropertiesForAllTiles(bool selected, bool highlighted, bool objective, bool resetOccupied)
+    void SetPropertiesForAllTiles(bool selected, bool focused, bool highlighted, bool objective, bool resetOccupied)
     {
         for (var row = 0; row < _size; row++)
         {
@@ -294,6 +296,7 @@ public class GameBoard : MonoBehaviour
             {
                 var tile = _tiles[row, col];
                 tile.Selected = selected;
+                tile.Focused = focused;
                 tile.Highlighted = highlighted;
                 tile.Objective = objective;
                 if (resetOccupied)
@@ -316,8 +319,8 @@ public class GameBoard : MonoBehaviour
                 var newTile = Instantiate(TilePrefab).GetComponent<Tile>();
                 newTile.name = "Tile_" + row + "_" + col;
                 newTile.transform.SetParent(transform.FindChild(Names.Tiles));
-                newTile.transform.localScale = new Vector3(_tileSize, newTile.Height, _tileSize);
-                newTile.transform.position = new Vector3(col * tileSpacing + offset, 0.5f * newTile.transform.localScale.y, row * tileSpacing + offset);
+                newTile.transform.localScale = new Vector3(_tileSize, _tileSize * newTile.Height, _tileSize);
+                newTile.transform.position = new Vector3(col * tileSpacing + offset, transform.position.y, row * tileSpacing + offset);
                 newTile.Row = row;
                 newTile.Col = col;
 
@@ -343,7 +346,7 @@ public class GameBoard : MonoBehaviour
 
     void PlacePawns()
     {
-        SetPropertiesForAllTiles(false, false, false, true);
+        SetPropertiesForAllTiles(false, false, false, false, true);
 
         var col = _size / 2;
         for (var i = 0; i < _players.Count; i++)
@@ -424,7 +427,7 @@ public class GameBoard : MonoBehaviour
         // Else create a new and add to the pool
         var newWall = GameObject.Instantiate(WallPrefab).GetComponent<Wall>();
         newWall.transform.SetParent(WallsTransform);
-        newWall.transform.localScale = new Vector3(1.9f * _tileSize + _tileSpacingFactor * _tileSize, 1, Mathf.Max(_tileSpacingFactor * _tileSize, _minWallWidth));
+        newWall.transform.localScale = new Vector3(1.7f * _tileSize + _tileSpacingFactor * _tileSize, 0.55f * _tileSize, Mathf.Max(_tileSpacingFactor * _tileSize, _minWallWidth));
         newWall.name = Names.Wall_;
         _walls.Add(newWall);
 
@@ -639,7 +642,12 @@ public class GameBoard : MonoBehaviour
 
         if (IsBoardPosition(_focusedTile.Row + rotatedVerticalInput, _focusedTile.Col + rotatedHorizontalInput))
         {
-            _focusedTile = _tiles[_focusedTile.Row + rotatedVerticalInput, _focusedTile.Col + rotatedHorizontalInput]; 
+            if (_focusedTile != null)
+            {
+                _focusedTile.Focused = false;
+            }
+            _focusedTile = _tiles[_focusedTile.Row + rotatedVerticalInput, _focusedTile.Col + rotatedHorizontalInput];
+            _focusedTile.Focused = true;
         } 
     }
 
@@ -667,7 +675,7 @@ public class GameBoard : MonoBehaviour
         foreach (var edge in currentPlayerPawn.Tile.Edges)
         {
             var neighbor = edge.GetNeighborOf(currentPlayerPawn.Tile);
-            if (neighbor.CanMoveTo(currentPlayerPawn.Tile))
+            if (neighbor.IsValidMoveTarget(currentPlayerPawn.Tile))
                 moves.Enqueue(new MovePawn(currentPlayerPawn, currentPlayerPawn.Tile, neighbor));
         }
 
@@ -731,35 +739,35 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    public bool PlayMove(Move move)
+    public bool PlayMove(Move genericMove)
     {
-        if (move == null)
+        if (genericMove == null)
         {
             Debug.LogWarning("Move to play is null!");
             return false;
         }
 
-        if (move.GetType() == typeof(MovePawn))
+        if (genericMove.GetType() == typeof(MovePawn))
         {
-            var movePawn = move as MovePawn;
-            if (movePawn.Destination.CanMoveTo(movePawn.Source))
-                MovePawnTo(movePawn.Pawn, movePawn.Destination);
-            else
-                return false;
-        }
-        else if (move.GetType() == typeof(PlaceWall))
-        {
-            var placeWall = move as PlaceWall;
-            if (CanPlaceWall(placeWall.Tile, placeWall.Horizontal))
+            var move = genericMove as MovePawn;
+            if (move.Destination.IsValidMoveTarget(move.Source))
             {
-                PlaceWall(placeWall.Tile, placeWall.Horizontal);
+                move.Pawn.MoveTo(move.Destination);
+            }
+            else return false;
+        }
+        else if (genericMove.GetType() == typeof(PlaceWall))
+        {
+            var move = genericMove as PlaceWall;
+            if (CanPlaceWall(move.Tile, move.Horizontal))
+            {
+                PlaceWall(move.Tile, move.Horizontal);
                 _players[CurrentPlayerIndex].Walls--;          
             }
-            else
-                return false;
+            else return false;
         }
 
-        _moves.Push(move);
+        _moves.Push(genericMove);
         NextTurn();
         MoveCount++;       
 
@@ -785,7 +793,7 @@ public class GameBoard : MonoBehaviour
         if (lastMove.GetType() == typeof(MovePawn))
         {
             var move = lastMove as MovePawn;
-            MovePawnTo(move.Pawn, move.Source);
+            move.Pawn.MoveTo(move.Source);
         }
         else if (lastMove.GetType() == typeof(PlaceWall))
         {
@@ -804,14 +812,6 @@ public class GameBoard : MonoBehaviour
     bool IsBoardValid()
     {
         return _aStar.CalculateDistancesToObjective();
-    }
-
-    public void MovePawnTo(Pawn pawn, Tile dest)
-    {
-        var src = pawn.Tile;
-        src.Occupied = false;
-        dest.Occupied = true;
-        pawn.Tile = dest;
     }
 
     public void PlaceWall(Tile tile, bool horizontal)
@@ -839,6 +839,7 @@ public class GameBoard : MonoBehaviour
         wall.Tile = tile;
         wall.Horizontal = horizontal;
         wall.Free = false;
+        wall.ColorCravings = CurrentPlayer.Color;
     }
 
     public void NextTurn()
@@ -855,7 +856,7 @@ public class GameBoard : MonoBehaviour
     {
         _referenceWall.Tile = null;
         RemoveTemporaryEdges();
-        SetPropertiesForAllTiles(false, false, false, false);
+        SetPropertiesForAllTiles(false, false, false, false, false);
 
         CurrentPlayerIndex = forward ? GetNextPlayer(CurrentPlayerIndex) : GetPreviousPlayer(CurrentPlayerIndex);
 
@@ -865,6 +866,7 @@ public class GameBoard : MonoBehaviour
             MarkObjectiveRow(CurrentPlayerIndex);
             SelectTile(CurrentPlayer.Pawn.Tile);
             _focusedTile = CurrentPlayer.Pawn.Tile;
+            _focusedTile.Focused = true;
             CurrentMoveType = Move.Types.MovePawn; 
         }
     }

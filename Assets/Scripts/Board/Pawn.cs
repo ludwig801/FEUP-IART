@@ -3,6 +3,7 @@ using System.Collections;
 
 public class Pawn : MonoBehaviour
 {
+    public Color BaseColor;
     public Player Player;
     public Tile Tile;
     [Range(0, 5)]
@@ -34,8 +35,9 @@ public class Pawn : MonoBehaviour
         _top = new Vector3(0, OffsetY + DeltaY, 0);
 
         var meshRenderer = GetComponentInChildren<MeshRenderer>();
-        meshRenderer.materials[1].color = Player.Color;
-        meshRenderer.materials[2].color = Player.Color;
+        meshRenderer.materials[0].color = Player.Color;
+        meshRenderer.materials[1].color = BaseColor;
+        meshRenderer.materials[2].color = BaseColor;
 
         StartCoroutine(UpdatePosition());
         StartCoroutine(UpdateOffsets());
@@ -123,5 +125,12 @@ public class Pawn : MonoBehaviour
     float SmoothStep(float t)
     {
         return Mathf.SmoothStep(0, 1, t);
+    }
+
+    public void MoveTo(Tile dest)
+    {
+        Tile.Occupied = false;
+        Tile = dest;
+        dest.Occupied = true;
     }
 }

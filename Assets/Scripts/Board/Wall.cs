@@ -1,14 +1,20 @@
 using UnityEngine;
 using System.Collections;
 
-[RequireComponent(typeof(MeshRenderer))]
 public class Wall : MonoBehaviour
 {
-    public Color ColorDefault, ColorInvalid, ColorInactive; 
-    [Range(0, 10)]
-    public int Speed;
+    public const int COLOR_BASE = 1;
+    public const int COLOR_CRAVINGS = 0;
+
+    public Color ColorDefault, ColorInvalid, ColorCravings;
+    [Range(0, 2)]
+    public float AnimDuration;
     public Tile Tile;
-    public bool Horizontal, Free, Invalid;
+    public bool Horizontal, Free, IsInvalid;
+
+    public bool tinting;
+    public float colorDeltaTime;
+    public Color cravingsTargetColor;
 
     public bool HasTile
     {
@@ -18,31 +24,137 @@ public class Wall : MonoBehaviour
         }
     }
 
+    Material[] Materials
+    {
+        get
+        {
+            if (_materials == null)
+                _materials = GetComponentInChildren<MeshRenderer>().materials;
+            return _materials;
+        }
+    }
+
     Vector3 _offset;
-    Material _material;
+    Material[] _materials;
+
 
     void Start()
     {
-        var gameBoard = GameBoard.Instance;
-        _offset = new Vector3(0.5f * (gameBoard.TileSize + gameBoard.TileSpacing * gameBoard.TileSize), 0.5f,
-            -0.5f * (gameBoard.TileSize + gameBoard.TileSpacing * gameBoard.TileSize));
-
-        _material = GetComponent<MeshRenderer>().material;
+        CalculateOffset();
     }
 
-    public void Update()
+    void OnEnable()
     {
-        if (HasTile)
+        CalculateOffset();
+
+        StartCoroutine(UpdateColor());
+        StartCoroutine(UpdatePosition());
+        StartCoroutine(UpdateRotation());
+    }
+
+    void CalculateOffset()
+    {
+        var gameBoard = GameBoard.Instance;
+        _offset = new Vector3(0.5f * (gameBoard.TileSize + gameBoard.TileSpacing * gameBoard.TileSize), 0.5f * gameBoard.TileSize,
+            -0.5f * (gameBoard.TileSize + gameBoard.TileSpacing * gameBoard.TileSize));
+    }
+
+    IEnumerator UpdateColor()
+    {
+        //var colorDeltaTime = 0f;
+        //var tinting = true;
+
+        colorDeltaTime = 0f;
+        tinting = true;
+        cravingsTargetColor = IsInvalid ? ColorInvalid : ColorCravings;
+        var _oldCravingsColor = Color.clear;
+        var _oldBaseColor = Color.clear;
+        
+        while (true)
         {
-            _material.color = Speed > 0 ? Color.Lerp(_material.color, Invalid ? ColorInvalid : ColorDefault, Time.deltaTime * Speed) : Invalid ? ColorInvalid : ColorDefault;
-            var objective = Tile.transform.position + _offset;
-            transform.position = Speed > 0 ? Vector3.Lerp(transform.position, objective, Speed * Time.deltaTime) : objective;
-            var objectiveRotation = Quaternion.Euler(0, Horizontal ? 0 : 90, 0);
-            transform.rotation = Speed > 0 ? Quaternion.Lerp(transform.rotation, objectiveRotation, Speed * Time.deltaTime) : objectiveRotation;
+            var cravingsTargetColor = IsInvalid ? ColorInvalid : ColorCravings;
+            var baseTargetColor = IsInvalid ? ColorInvalid : ColorDefault;
+
+            if (!Utils.IsColorLike(_oldCravingsColor, cravingsTargetColor) && !Utils.IsColorLike(_oldBaseColor, baseTargetColor))
+            {
+                _oldCravingsColor = cravingsTargetColor;
+                _oldBaseColor = baseTargetColor;
+                colorDeltaTime = 0;
+                tinting = true;
+            }
+            else if (tinting)
+            {
+                var baseMaterial = Materials[COLOR_BASE];
+                var cravingsMaterial = Materials[COLOR_CRAVINGS];
+                colorDeltaTime += Time.deltaTime;
+                var t = Mathf.Clamp01(colorDeltaTime / AnimDuration);
+
+                baseMaterial.color = AnimDuration > 0 ? Color.Lerp(baseMaterial.color, baseTargetColor, t) : baseTargetColor;
+                cravingsMaterial.color = AnimDuration > 0 ? Color.Lerp(cravingsMaterial.color, cravingsTargetColor, t) : cravingsTargetColor;
+
+                tinting = (t < 1);
+            }
+
+            yield return null;
         }
-        else
+    }
+
+    IEnumerator UpdatePosition()
+    {
+        var posDeltaTime = 0f;
+        var oldTile = Tile;
+        oldTile = null;
+        var targetPosition = _offset;
+        var moving = true;
+
+        while (true)
         {
-            _material.color = Speed > 0 ? Color.Lerp(_material.color, ColorInactive, Time.deltaTime * Speed) : ColorInactive;  
+            if (HasTile && oldTile != Tile)
+            {
+                oldTile = Tile;
+                posDeltaTime = 0;
+                moving = true;
+                targetPosition = (Tile.transform.position + _offset);
+            }
+            else if (moving)
+            {
+                posDeltaTime += Time.deltaTime;
+                var t = Mathf.Clamp01(posDeltaTime / AnimDuration);
+                transform.position = AnimDuration > 0 ? Vector3.Lerp(transform.position, targetPosition, t) : targetPosition;
+
+                moving = (t < 1);
+            }
+
+            yield return null;
+        }
+    }
+
+    IEnumerator UpdateRotation()
+    {
+        var rotDeltaTime = 0f;
+        var currentHorizontal = !Horizontal;
+        var targetRotation = Quaternion.Euler(0, Horizontal ? 0 : 90, 0);
+        var rotating = true;
+
+        while (true)
+        {
+            if (currentHorizontal != Horizontal)
+            {
+                currentHorizontal = Horizontal;
+                rotDeltaTime = 0;
+                targetRotation = Quaternion.Euler(0, currentHorizontal ? 0 : 90, 0);
+                rotating = true;
+            }
+            else if (rotating)
+            {
+                rotDeltaTime += Time.deltaTime;
+                var t = Mathf.Clamp01(rotDeltaTime / AnimDuration);
+                transform.rotation = AnimDuration > 0 ? Quaternion.Lerp(transform.rotation, targetRotation, t) : targetRotation;
+
+                rotating = (t < 1);
+            }
+
+            yield return null;
         }
     }
 }

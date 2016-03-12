@@ -4,19 +4,19 @@ using System.Collections.Generic;
 
 public class Tile : MonoBehaviour
 {
-    public Color ColorDefault, ColorHighlighted, ColorOccupied, ColorSelected, ColorObjective;
+    public Color ColorDefault, ColorFocused, ColorHighlighted, ColorOccupied, ColorSelected, ColorObjective;
     [Range(0, 10)]
     public float AnimDuration;
-    public List<Edge> Edges;
-    public int Row, Col;
-    [Range(0.5f, 1.5f)]
+    [Range(0f, 1.5f)]
     public float Height;
-    public bool Occupied, Selected, Highlighted, Objective;
+    public int Row, Col;
+    public bool Occupied, Focused, Selected, Highlighted, Objective;
     public int AStarCostValue, AStarHeuristicValue;
     public int AStarFunctionValue { get { return AStarCostValue + AStarHeuristicValue; } }
     public Tile AStarPathParent;
+    public List<Edge> Edges;
 
-    Material _material;
+    private Material _material;
 
     void Start()
     {
@@ -31,13 +31,14 @@ public class Tile : MonoBehaviour
 
         while (true)
         {
-            var targetColor = Selected ? ColorSelected :
+            var targetColor = Focused ? ColorFocused :
+                Selected ? ColorSelected :
                 Occupied ? ColorOccupied :
                 Highlighted ? ColorHighlighted :
                 Objective ? ColorObjective :
                 ColorDefault;
 
-            if (!IsColorLike(_material.color, targetColor))
+            if (!Utils.IsColorLike(_material.color, targetColor))
             {
                 colorDeltaTime += Time.deltaTime;
                 _material.color = Color.Lerp(_material.color, targetColor, AnimDuration > 0 ? Mathf.Clamp01(colorDeltaTime / AnimDuration) : 1);
@@ -82,44 +83,14 @@ public class Tile : MonoBehaviour
         return false;
     }
 
-    public bool CanMoveTo(Tile src)
+    public bool IsValidMoveTarget(Tile src)
     {
-        if (Occupied)
-            return false;
-
-        foreach (Edge edge in Edges)
-        {
-            if (edge.Connects(this, src) && edge.Active)
-                return true; 
-        }
-
-        return false;
+        return !Occupied && IsNeighborOf(src);
     }
 
     public override string ToString()
     {
         return "[" + Row + " " + Col + "]";
-    }
-
-    public bool IsColorLike(Color colorA, Color colorB, float tolerancePerc = 0.01f)
-    {
-        var r = Mathf.Abs(colorA.r - colorB.r);
-        if (r > tolerancePerc)
-            return false;
-
-        var g = Mathf.Abs(colorA.g - colorB.g);
-        if (g > tolerancePerc)
-            return false;
-
-        var b = Mathf.Abs(colorA.b - colorB.b);
-        if (b > tolerancePerc)
-            return false;
-
-        var a = Mathf.Abs(colorA.a - colorB.a);
-        if (a > tolerancePerc)
-            return false;
-
-        return true;
     }
 
     // Class Methods
