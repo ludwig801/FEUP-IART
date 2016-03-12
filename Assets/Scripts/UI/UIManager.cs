@@ -19,7 +19,7 @@ public class UIManager : MonoBehaviour
     public Toggle Player1Starts, Player1IsCPU, Player2IsCPU;
     public Slider DifficultySlider;
     public Image PlayerColor;
-    public Text DifficultyLabel, Player, InfoText;
+    public Text DifficultyLabel, InfoText;
     public Button PauseBtn, ResumeBtn, StartBtn;
     // Debug
     public Toggle DebugToggle;
@@ -61,44 +61,41 @@ public class UIManager : MonoBehaviour
                 if (GameBoard.Winner < 0)
                 {
                     PlayerColor.color = Color.clear;
-                    Player.text = "";
                     InfoText.text = "Game Over: Draw";
                 }
                 else
                 {
                     PlayerColor.color = GameBoard.GetPlayer(GameBoard.Winner).Color;
-                    Player.text = "Winner: Player " + (GameBoard.Winner + 1);
                     InfoText.text = "Game Over";
                 }
             }
             else
             {
+                var currentPlayerIndex = GameBoard.CurrentPlayerIndex + 1;
                 var currentPlayer = GameBoard.CurrentPlayer;
                 PlayerColor.color = currentPlayer.Color;
-                Player.text = "Player " + (GameBoard.CurrentPlayerIndex + 1) + (currentPlayer.IsCpu ? " [CPU]" : "");
                 if (!currentPlayer.IsCpu)
                 {
                     switch (GameBoard.CurrentMoveType)
                     {
                         case Move.Types.MovePawn:
-                            InfoText.text = "Move your pawn...";
+                            InfoText.text = string.Concat("Player ", currentPlayerIndex, ": Move pawn");
                             break;
 
                         case Move.Types.PlaceWall:
-                            InfoText.text = "Place your wall... (" + currentPlayer.Walls + " left)";
+                            InfoText.text = string.Concat("Player ", currentPlayerIndex, ": Place wall");
                             break;
                     }  
                 }
                 else
                 {
-                    InfoText.text = "CPU move...";
+                    InfoText.text = "Wait for CPU...";
                 }
             }
         }
         else
         {
             PlayerColor.color = Color.clear;
-            Player.text = "";
             InfoText.text = "Game Not Running";
         }
 
