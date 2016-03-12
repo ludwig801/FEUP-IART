@@ -39,7 +39,6 @@ public class GameBoard : MonoBehaviour
     [SerializeField] int _boardScaleMultiplier = 5;
     Minimax _minimax;
     AStar _aStar;
-    Transform _referenceFocused;
     Wall _referenceWall;
     Quaternion _rotateCameraPivotTo;
     Stack<Move> _moves;
@@ -164,12 +163,6 @@ public class GameBoard : MonoBehaviour
         CreateTiles();
         CreateEdges();
 
-        _referenceFocused = Instantiate(FocusPrefab).transform;
-        _referenceFocused.SetParent(transform);
-        _referenceFocused.name = "Reference Focus Tile";
-        _referenceFocused.localScale = new Vector3(0.75f * _tileSize, _referenceFocused.localScale.y, 0.75f * _tileSize);
-        _referenceFocused.transform.position = new Vector3(0, TilePrefab.transform.localScale.y * 0.5f, 0);
-
         StartCoroutine(UpdateEdges());
 
         Ongoing = false;
@@ -255,12 +248,8 @@ public class GameBoard : MonoBehaviour
 
     void UpdateVisualElements()
     {
-        //_referenceFocused.gameObject.SetActive(!IsGameOver && _focusedTile != null && !IsCurrentPlayerCPU);
-        _referenceFocused.gameObject.SetActive(false);
         if (_focusedTile != null)
         {
-            var newPosition = new Vector3(_focusedTile.transform.position.x, _referenceFocused.position.y, _focusedTile.transform.position.z);
-            _referenceFocused.position = Vector3.Lerp(_referenceFocused.position, newPosition, Time.deltaTime * 8f);
             _referenceWall.gameObject.SetActive(CurrentMoveType == Move.Types.PlaceWall);
             _referenceWall.IsInvalid = !CanPlaceWall(_focusedTile, _referenceWall.Horizontal);
             _referenceWall.Tile = _focusedTile;
@@ -857,6 +846,8 @@ public class GameBoard : MonoBehaviour
         _referenceWall.Tile = null;
         RemoveTemporaryEdges();
         SetPropertiesForAllTiles(false, false, false, false, false);
+        if(CurrentPlayerIndex >= 0)
+            CurrentPlayer.Pawn.CanFloat = false;
 
         CurrentPlayerIndex = forward ? GetNextPlayer(CurrentPlayerIndex) : GetPreviousPlayer(CurrentPlayerIndex);
 
@@ -867,7 +858,8 @@ public class GameBoard : MonoBehaviour
             SelectTile(CurrentPlayer.Pawn.Tile);
             _focusedTile = CurrentPlayer.Pawn.Tile;
             _focusedTile.Focused = true;
-            CurrentMoveType = Move.Types.MovePawn; 
+            CurrentMoveType = Move.Types.MovePawn;
+            CurrentPlayer.Pawn.CanFloat = !CurrentPlayer.IsCpu;
         }
     }
 

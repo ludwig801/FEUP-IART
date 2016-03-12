@@ -17,6 +17,7 @@ public class Pawn : MonoBehaviour
     public bool Moving;
     public bool Floating;
     public bool OnTile;
+    public bool CanFloat;
 
     Vector3 _bottom;
     Vector3 _top;
@@ -31,6 +32,8 @@ public class Pawn : MonoBehaviour
 
     void Start()
     {
+        CanFloat = false;
+
         _bottom = new Vector3(0, OffsetY, 0);
         _top = new Vector3(0, OffsetY + DeltaY, 0);
 
@@ -75,8 +78,9 @@ public class Pawn : MonoBehaviour
                 }
             }
 
-            if (OnTile && Floating)
+            if (OnTile && CanFloat)
             {
+                Floating = true;
                 var floatTarget = Tile.transform.position + (movingUp ? _top : _bottom);
                 if (Vector3.Distance(transform.position, floatTarget) < MoveDeadZone)
                 {
