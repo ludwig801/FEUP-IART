@@ -22,6 +22,8 @@ public class UIManager : MonoBehaviour
     public Text DifficultyLabel, InfoText;
     public RectTransform WallsPanel;
     public BarIntSlider WallsSlider;
+    public RectTransform MoveCountPanel;
+    public Text MoveCount;
     public Button PauseBtn, ResumeBtn, StartBtn;
     public Text WinnerInfo;
     public Image WinnerBackground;
@@ -66,7 +68,7 @@ public class UIManager : MonoBehaviour
                     case Move.Types.PlaceWall:
                         InfoText.text = string.Concat("Player ", currentPlayerIndex, ": Place wall");
                         break;
-                }  
+                }
             }
             else
             {
@@ -74,8 +76,23 @@ public class UIManager : MonoBehaviour
             }
 
             WallsPanel.gameObject.SetActive(true);
-            WallsSlider.BarColor = PlayerColor.color;
+            WallsSlider.BarColor = GameBoard.CurrentPlayer.Color;
             WallsSlider.Value = GameBoard.CurrentPlayer.Walls;
+
+            MoveCountPanel.gameObject.SetActive(true);
+            MoveCount.text = string.Concat(GameBoard.MoveCount);
+        }
+        else if (GameBoard.Paused)
+        {
+            WallsPanel.gameObject.SetActive(true);
+            WallsSlider.BarColor = GameBoard.CurrentPlayer.Color;
+            WallsSlider.Value = GameBoard.CurrentPlayer.Walls;
+
+            PlayerColor.color = Color.clear;
+            InfoText.text = "Game Is Paused";
+
+            MoveCountPanel.gameObject.SetActive(true);
+            MoveCount.text = string.Concat(GameBoard.MoveCount);
         }
         else
         {
@@ -101,6 +118,7 @@ public class UIManager : MonoBehaviour
             }
 
             WallsPanel.gameObject.SetActive(false);
+            MoveCountPanel.gameObject.SetActive(false);
         }
     }
 

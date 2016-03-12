@@ -78,7 +78,7 @@ public class Pawn : MonoBehaviour
                 }
             }
 
-            if (OnTile && CanFloat)
+            if (!Moving && OnTile && CanFloat)
             {
                 Floating = true;
                 var floatTarget = Tile.transform.position + (movingUp ? _top : _bottom);
@@ -95,9 +95,9 @@ public class Pawn : MonoBehaviour
                 }
             }
 
-            if (!Moving && !Floating && OnTile)
+            if (!Moving && !CanFloat && OnTile)
             {
-                if (Vector3.Distance(transform.position, _bottom) > MoveDeadZone)
+                if (Vector3.Distance(transform.position, Tile.transform.position + _bottom) > MoveDeadZone)
                     transform.position = Tile.transform.position + _bottom;
             }
 

@@ -52,7 +52,7 @@ public class GameBoard : MonoBehaviour
     // Public variables
     [Range(-1, 1)]
     public int StartingPlayer;
-    public bool ShowEdges, Ongoing, IsGameOver;
+    public bool ShowEdges, Ongoing, Paused, IsGameOver;
 
     // Properties
     public int PlayersCount
@@ -166,6 +166,7 @@ public class GameBoard : MonoBehaviour
         StartCoroutine(UpdateEdges());
 
         Ongoing = false;
+        Paused = false;
     }
 
     void Update()
@@ -592,17 +593,20 @@ public class GameBoard : MonoBehaviour
 
     public void Pause()
     {
+        Paused = true;
         Ongoing = false;
     }
 
     public void Resume()
     {
+        Paused = false;
         Ongoing = true;
     }
 
     public void NewGame()
     {
         Ongoing = true;
+        Paused = false;
         PlacePawns();
 
         CurrentPlayerIndex = StartingPlayer - 1;

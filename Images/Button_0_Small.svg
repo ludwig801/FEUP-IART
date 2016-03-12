@@ -10,14 +10,14 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="256"
-   height="256"
-   viewBox="0 0 256 256"
+   width="32"
+   height="31.999998"
+   viewBox="0 0 32 31.999998"
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
-   sodipodi:docname="Button_1_Disabled.svg"
-   inkscape:export-filename="D:\Github Repos\FEUP-IART\Assets\Resources\Sprites\Button_1_Disabled.png"
+   sodipodi:docname="Button_0_Small.svg"
+   inkscape:export-filename="D:\Github Repos\FEUP-IART\Assets\Resources\Sprites\Button_0_Small.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -34,22 +34,6 @@
          offset="1"
          id="stop3375" />
     </linearGradient>
-    <filter
-       style="color-interpolation-filters:sRGB;"
-       inkscape:label="Greyscale"
-       id="filter5753">
-      <feColorMatrix
-         values="0.21 0.72 0.072 0 0 0.21 0.72 0.072 0 0 0.21 0.72 0.072 0 0 0 0 0 1 0 "
-         id="feColorMatrix5755" />
-    </filter>
-    <filter
-       style="color-interpolation-filters:sRGB;"
-       inkscape:label="Greyscale"
-       id="filter5757">
-      <feColorMatrix
-         values="0.21 0.72 0.072 0 0 0.21 0.72 0.072 0 0 0.21 0.72 0.072 0 0 0 0 0 1 0 "
-         id="feColorMatrix5759" />
-    </filter>
   </defs>
   <sodipodi:namedview
      id="base"
@@ -58,9 +42,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.6628865"
-     inkscape:cx="120.55692"
-     inkscape:cy="121.88586"
+     inkscape:zoom="3.8477008"
+     inkscape:cx="86.465166"
+     inkscape:cy="38.070962"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -83,7 +67,11 @@
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
      inkscape:snap-nodes="false"
-     showguides="false" />
+     showguides="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -100,22 +88,13 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(0,-796.36227)">
+     transform="translate(-2.9802322e-8,-1020.3623)">
     <rect
-       style="fill:#ff9955;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter5753)"
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.99999994;stroke-linejoin:miter;stroke-opacity:1"
        id="rect5668"
-       width="252"
-       height="251.99998"
-       x="-254"
-       y="-1050.3623"
-       transform="scale(-1,-1)" />
-    <rect
-       y="-1050.3623"
-       x="-228.05627"
-       height="251.99997"
-       width="200.11256"
-       id="rect5670"
-       style="fill:#784421;fill-opacity:1;stroke:#000000;stroke-width:3.99999976;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter5757)"
-       transform="scale(-1,-1)" />
+       width="31"
+       height="30.999998"
+       x="0.5"
+       y="1020.8623" />
   </g>
 </svg>
