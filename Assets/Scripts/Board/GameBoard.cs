@@ -30,7 +30,7 @@ public class GameBoard : MonoBehaviour
     [Range(0.25f, 1.25f)]
     [SerializeField] float _minWallWidth;
     [Range(0, 10)]
-    [SerializeField] int _numWallsPerPlayer;
+    public int NumWallsPerPlayer;
     [Range(50, 500)]
     [SerializeField] int _maxMovesPerGame;
     [Range(0, 2)]
@@ -610,7 +610,7 @@ public class GameBoard : MonoBehaviour
 
         foreach (var player in _players)
         {
-            player.Walls = _numWallsPerPlayer;
+            player.Walls = NumWallsPerPlayer;
         }
             
         RemoveAllWalls();

@@ -20,6 +20,8 @@ public class UIManager : MonoBehaviour
     public Slider DifficultySlider;
     public Image PlayerColor;
     public Text DifficultyLabel, InfoText;
+    public RectTransform WallsPanel;
+    public BarIntSlider WallsSlider;
     public Button PauseBtn, ResumeBtn, StartBtn;
     public Text WinnerInfo;
     public Image WinnerBackground;
@@ -33,6 +35,7 @@ public class UIManager : MonoBehaviour
         DifficultySlider.value = Mathf.Clamp(DifficultySlider.value, DifficultySlider.minValue, DifficultySlider.maxValue);
         DifficultySlider.value = GameBoard.Minimax.Depth;
         PlayerClosedGameOverPanel = false;
+        WallsSlider.Size = GameBoard.NumWallsPerPlayer;
     }
 
     void Update()
@@ -69,6 +72,10 @@ public class UIManager : MonoBehaviour
             {
                 InfoText.text = "Wait for CPU...";
             }
+
+            WallsPanel.gameObject.SetActive(true);
+            WallsSlider.BarColor = PlayerColor.color;
+            WallsSlider.Value = GameBoard.CurrentPlayer.Walls;
         }
         else
         {
@@ -92,6 +99,8 @@ public class UIManager : MonoBehaviour
                     InfoText.text = string.Concat("Game Over (Winner is player ", GameBoard.Winner + 1, ")");
                 }
             }
+
+            WallsPanel.gameObject.SetActive(false);
         }
     }
 

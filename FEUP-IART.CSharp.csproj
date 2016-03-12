@@ -83,6 +83,7 @@
     <Compile Include="Assets\Scripts\Libraries\NamesUI.cs" />
     <Compile Include="Assets\Scripts\Libraries\Tags.cs" />
     <Compile Include="Assets\Scripts\Libraries\Utils.cs" />
+    <Compile Include="Assets\Scripts\UI\BarIntSlider.cs" />
     <Compile Include="Assets\Scripts\UI\SliderValue.cs" />
     <Compile Include="Assets\Scripts\UI\UIManager.cs" />
   </ItemGroup>
