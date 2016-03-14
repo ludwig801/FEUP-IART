@@ -189,12 +189,21 @@ public class Minimax : MonoBehaviour, IBestMoveAlgorithm
         var opponentDistanceToNextRow = _aStar.LastCalculatedResults[opponent];
         var playerProgressToNextRowVsOpponent = (opponentDistanceToNextRow - playerDistanceToNextRow) / maxStepsToNextRow;
 
-        var heuristicValueA = _heuristicFunctionsWeights[0, player] * playerProgressToObjective;
-        var heuristicValueB = _heuristicFunctionsWeights[1, player] * playerProgressToObjectiveVsOpponent;
-        var heuristicValueC = _heuristicFunctionsWeights[2, player] * playerProgressToNextRow;
-        var heuristicValueD = _heuristicFunctionsWeights[2, player] * playerProgressToNextRowVsOpponent;
+        if (_gameBoard.CurrentPlayer.Walls > 0)
+        {
+            var heuristicValueA = _heuristicFunctionsWeights[0, player] * playerProgressToObjective;
+            var heuristicValueB = _heuristicFunctionsWeights[1, player] * playerProgressToObjectiveVsOpponent;
+            var heuristicValueC = _heuristicFunctionsWeights[2, player] * playerProgressToNextRow;
+            var heuristicValueD = _heuristicFunctionsWeights[2, player] * playerProgressToNextRowVsOpponent;
 
-        return (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) * Random.Range(0.96f, 1f);
+            return (heuristicValueA + heuristicValueB + heuristicValueC + heuristicValueD) * Random.Range(0.96f, 1);
+        }
+        else
+        {
+            var heuristicValueA = _heuristicFunctionsWeights[0, player] * playerProgressToObjective;
+
+            return heuristicValueA * Random.Range(0.96f, 1);
+        }
     }
 
     int GetPlayerRowAbs(int player)
